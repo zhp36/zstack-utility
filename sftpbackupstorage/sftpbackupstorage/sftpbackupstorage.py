@@ -79,6 +79,7 @@ class DownloadResponse(AgentResponse):
         self.imageUuid = None
         self.md5Sum = None
         self.size = None
+        self.actualSize = None
 
 class WriteImageMetaDataResponse(AgentResponse):
     def __init__(self):
@@ -242,6 +243,7 @@ class SftpBackupStorageAgent(object):
         (total, avail) = self.get_capacity()
         rsp.md5Sum = md5sum
         rsp.size = size
+        rsp.actualSize = linux.get_qcow2_virtualsize(install_path)
         rsp.totalCapacity = total
         rsp.availableCapacity = avail
         return jsonobject.dumps(rsp)
