@@ -242,8 +242,8 @@ class SftpBackupStorageAgent(object):
         logger.debug('successfully downloaded %s to %s' % (cmd.url, install_path))
         (total, avail) = self.get_capacity()
         rsp.md5Sum = md5sum
-        rsp.size = size
-        rsp.actualSize = linux.get_qcow2_virtualsize(install_path)
+        rsp.actualSize = size
+        rsp.size = linux.get_qcow2_virtualsize(install_path)
         rsp.totalCapacity = total
         rsp.availableCapacity = avail
         return jsonobject.dumps(rsp)
