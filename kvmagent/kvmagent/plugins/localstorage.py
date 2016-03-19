@@ -29,11 +29,13 @@ class MergeSnapshotRsp(AgentResponse):
     def __init__(self):
         super(MergeSnapshotRsp, self).__init__()
         self.size = None
+        self.actualSize = None
 
 class RebaseAndMergeSnapshotsRsp(AgentResponse):
     def __init__(self):
         super(RebaseAndMergeSnapshotsRsp, self).__init__()
         self.size = None
+        self.actualSize = None
 
 class CheckBitsRsp(AgentResponse):
     def __init__(self):
@@ -228,7 +230,8 @@ class LocalStoragePlugin(kvmagent.KvmAgent):
             os.makedirs(workspace_dir)
 
         linux.qcow2_create_template(cmd.snapshotInstallPath, cmd.workspaceInstallPath)
-        rsp.size = os.path.getsize(cmd.workspaceInstallPath)
+        rsp.actualSize = os.path.getsize(cmd.workspaceInstallPath)
+        rsp.size = linux.get_qcow2_virtualsize(cmd.workspaceInstallPath)
 
         rsp.totalCapacity, rsp.availableCapacity = self._get_disk_capacity()
         return jsonobject.dumps(rsp)
@@ -251,7 +254,8 @@ class LocalStoragePlugin(kvmagent.KvmAgent):
             os.makedirs(workspace_dir)
 
         linux.qcow2_create_template(latest, cmd.workspaceInstallPath)
-        rsp.size = os.path.getsize(cmd.workspaceInstallPath)
+        rsp.actualSize = os.path.getsize(cmd.workspaceInstallPath)
+        rsp.size = linux.get_qcow2_virtualsize(cmd.workspaceInstallPath)
 
         rsp.totalCapacity, rsp.availableCapacity = self._get_disk_capacity()
         return jsonobject.dumps(rsp)

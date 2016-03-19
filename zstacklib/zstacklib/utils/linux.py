@@ -470,6 +470,11 @@ def qcow2_rebase(backing_file, target):
 def qcow2_rebase_no_check(backing_file, target):
     shell.call('/usr/bin/qemu-img rebase -u -f qcow2 -b %s %s' % (backing_file, target))
 
+def get_qcow2_virtualsize(path):
+    out = shell.call("/usr/bin/qemu-img info %s | grep 'virtual size' | awk -F '[( bytes)]' '{print $8}'" % path)
+    out = out.strip(' \t\n')
+    return long(out)
+
 def rmdir_if_empty(dirpath):
     try:
         os.rmdir(dirpath)
