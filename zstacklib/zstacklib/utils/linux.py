@@ -476,6 +476,14 @@ def qcow2_rebase(backing_file, target):
 def qcow2_rebase_no_check(backing_file, target):
     shell.call('/usr/bin/qemu-img rebase -u -f qcow2 -b %s %s' % (backing_file, target))
 
+def qcow2_virtualsize(file_path):
+    cmd = shell.ShellCmd("set -o pipefail; qemu-img info %s | grep -w 'virtual size' | awk -F '(' '{print $2}' | awk '{print $1}'" % file_path)
+    cmd(False)
+    if cmd.return_code != 0:
+        raise Exception('cannot get the virtual size of the file[%s], %s %s' % (file_path, cmd.stdout, cmd.stderr))
+    out = cmd.stdout.strip(' \t\r\n')
+    return long(out)
+
 def rmdir_if_empty(dirpath):
     try:
         os.rmdir(dirpath)
