@@ -96,11 +96,13 @@ class MergeSnapshotResponse(NfsResponse):
     def __init__(self):
         super(MergeSnapshotResponse, self).__init__()
         self.size = None
+        self.actualSize = None
 
 class RebaseAndMergeSnapshotsResponse(NfsResponse):
     def __init__(self):
         super(RebaseAndMergeSnapshotsResponse, self).__init__()
         self.size = None
+        self.actualSize = None
 
 class MoveBitsRsp(NfsResponse):
     def __init__(self):
@@ -221,7 +223,7 @@ class NfsPrimaryStoragePlugin(kvmagent.KvmAgent):
 
         try:
             linux.qcow2_create_template(latest, cmd.workspaceInstallPath)
-            rsp.size = os.path.getsize(cmd.workspaceInstallPath)
+            rsp.size, rsp.actualSize = cmd.workspaceInstallPath
             self._set_capacity_to_response(cmd.uuid, rsp)
         except linux.LinuxError as e:
             logger.warn(linux.get_exception_stacktrace())
@@ -242,7 +244,7 @@ class NfsPrimaryStoragePlugin(kvmagent.KvmAgent):
 
         try:
             linux.qcow2_create_template(cmd.snapshotInstallPath, cmd.workspaceInstallPath)
-            rsp.size = os.path.getsize(cmd.workspaceInstallPath)
+            rsp.size, rsp.actualSize = linux.qcow2_size_and_actual_size(cmd.workspaceInstallPath)
             self._set_capacity_to_response(cmd.uuid, rsp)
         except linux.LinuxError as e:
             logger.warn(linux.get_exception_stacktrace())
