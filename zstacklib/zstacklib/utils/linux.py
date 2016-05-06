@@ -449,7 +449,7 @@ def sftp_get(hostname, sshkey, filename, download_to, timeout=0, interval=1, cal
             os.remove(batch_file_path)
 
 def qcow2_size_and_actual_size(file_path):
-    cmd = shell.ShellCmd('''set -o pipefail; qemu-img info %s |  awk '{if (/^virtual size:/) {vs=substr($4,2)}; if (/^disk size:/) {ds=$3} } END{print vs?vs:"null", ds?ds:"null"}' ''', file_path)
+    cmd = shell.ShellCmd('''set -o pipefail; qemu-img info %s |  awk '{if (/^virtual size:/) {vs=substr($4,2)}; if (/^disk size:/) {ds=$3} } END{print vs?vs:"null", ds?ds:"null"}' ''' % file_path)
     cmd(False)
     if cmd.return_code != 0:
         raise Exception('cannot get the virtual/actual size of the file[%s], %s %s' % (file_path, cmd.stdout, cmd.stderr))
