@@ -98,6 +98,11 @@ class GetSshKeyResponse(AgentResponse):
     def __init__(self):
         self.sshKey = None
         super(GetSshKeyResponse, self).__init__()
+
+class GetImageActualSizeRsp(AgentResponse):
+    def __init__(self):
+        super(GetImageActualSizeRsp, self).__init__()
+        self.actualSize = None
         
 def replyerror(func):
     @functools.wraps(func)
@@ -128,6 +133,7 @@ class SftpBackupStorageAgent(object):
     GET_SSHKEY_PATH = "/sftpbackupstorage/sshkey"
     ECHO_PATH = "/sftpbackupstorage/echo"
     WRITE_IMAGE_METADATA = "/sftpbackupstorage/writeimagemetadata"
+    GET_IMAGE_ACTUAL_SIZE = "/sftpbackupstorage/getimageactualsize"
     
     IMAGE_TEMPLATE = 'template'
     IMAGE_ISO = 'iso'
@@ -156,7 +162,14 @@ class SftpBackupStorageAgent(object):
     def echo(self, req):
         logger.debug('get echoed')
         return ''
-        
+
+    @replyerror
+    def get_image_actual_size(self, req):
+        cmd = jsonobject.loads(req[http.REQUEST_BODY])
+        rsp = GetImageActualSizeRsp()
+        _, rsp.actualSize = linux.qcow2_size_and_actual_size(cmd.installPath)
+        return jsonobject.dumps(rsp)
+
     @replyerror
     def connect(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
@@ -289,6 +302,7 @@ class SftpBackupStorageAgent(object):
         self.http_server.register_async_uri(self.GET_SSHKEY_PATH, self.get_sshkey)
         self.http_server.register_async_uri(self.WRITE_IMAGE_METADATA, self.write_image_metadata)
         self.http_server.register_async_uri(self.PING_PATH, self.ping)
+        self.http_server.register_async_uri(self.GET_IMAGE_ACTUAL_SIZE, self.get_image_actual_size)
         self.storage_path = None
         self.uuid = None
 
