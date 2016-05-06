@@ -1920,18 +1920,6 @@ class AddImageAction(inventory.APIAddImageMsg):
         self.out = evt
         return self.out
 
-class SyncImageActualSizeAction(inventory.APISyncImageActualSizeMsg):
-    def __init__(self):
-        super(SyncImageActualSizeAction, self).__init__()
-        self.sessionUuid = None
-        self.out = None
-    def run(self):
-        if not self.sessionUuid:
-            raise Exception('sessionUuid of action[SyncImageActualSizeAction] cannot be None')
-        evt = api.async_call(self, self.sessionUuid)
-        self.out = evt
-        return self.out
-
 class CreateDataVolumeTemplateFromVolumeAction(inventory.APICreateDataVolumeTemplateFromVolumeMsg):
     def __init__(self):
         super(CreateDataVolumeTemplateFromVolumeAction, self).__init__()
@@ -1952,6 +1940,18 @@ class CreateRootVolumeTemplateFromVolumeSnapshotAction(inventory.APICreateRootVo
     def run(self):
         if not self.sessionUuid:
             raise Exception('sessionUuid of action[CreateRootVolumeTemplateFromVolumeSnapshotAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
+class SyncImageSizeAction(inventory.APISyncImageSizeMsg):
+    def __init__(self):
+        super(SyncImageSizeAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[SyncImageSizeAction] cannot be None')
         evt = api.async_call(self, self.sessionUuid)
         self.out = evt
         return self.out
