@@ -25,10 +25,59 @@ class ScanRsp(object):
 class HaPlugin(kvmagent.KvmAgent):
     SCAN_HOST_PATH = "/ha/scanhost"
     SETUP_SELF_FENCER_PATH = "/ha/selffencer/setup"
+    CEPH_SELF_FENCER = "/ha/ceph/setupselffencer"
 
     RET_SUCCESS = "success"
     RET_FAILURE = "failure"
     RET_NOT_STABLE = "unstable"
+
+    @kvmagent.replyerror
+    def setup_ceph_self_fencer(self, req):
+        cmd = jsonobject.loads(req[http.REQUEST_BODY])
+
+        @thread.AsyncThread
+        def heartbeat_on_ceph():
+            try:
+                failure = 0
+
+                while True:
+                    time.sleep(cmd.interval)
+
+                    mon_url = '\;'.join(cmd.monUrls)
+                    mon_url = mon_url.replace(':', '\\:')
+                    touch = shell.ShellCmd('timeout %s qemu-img info rbd:%s:id=zstack:key=%s:auth_supported=cephx\;none:mon_host=%s' %
+                                           (cmd.storageCheckerTimeout, cmd.heartbeatImagePath, cmd.userKey, mon_url))
+                    touch(False)
+
+                    if touch.return_code == 0:
+                        failure = 0
+                        continue
+
+                    if touch.return_code != 0 and 'No such file or directory' in touch.stderr:
+                        # the heart beat file is not there, create it
+                        create = shell.ShellCmd('timeout %s qemu-img create -f raw rbd:%s:id=zstack:key=%s:auth_supported=cephx\;none:mon_host=mon_host=%s 1' %
+                                                (cmd.storageCheckerTimeout, cmd.heartbeatImagePath, cmd.userKey, mon_url))
+                        create(False)
+                        if touch.return_code == 0:
+                            failure = 0
+                            continue
+                        else:
+                            logger.warn('cannot create heartbeat image; %s' % create.stderr)
+                    else:
+                        logger.warn('cannot read heartbeat file; %s' % touch.stderr)
+
+                    failure += 1
+                    if failure == cmd.maxAttempts:
+                        logger.warn('failed to read the heartbeat file[%s] %s times, we lost the connection to the storage,'
+                                    'shutdown ourselves' % (cmd.heartbeatImagePath, cmd.maxAttempts))
+                        shell.call('init 0')
+            except:
+                content = traceback.format_exc()
+                logger.warn(content)
+
+        heartbeat_on_ceph()
+
+        return jsonobject.dumps(AgentRsp())
 
     @kvmagent.replyerror
     def setup_self_fencer(self, req):
@@ -144,6 +193,7 @@ class HaPlugin(kvmagent.KvmAgent):
         http_server = kvmagent.get_http_server()
         http_server.register_async_uri(self.SCAN_HOST_PATH, self.scan_host)
         http_server.register_async_uri(self.SETUP_SELF_FENCER_PATH, self.setup_self_fencer)
+        http_server.register_async_uri(self.CEPH_SELF_FENCER, self.setup_ceph_self_fencer)
 
     def stop(self):
         pass
