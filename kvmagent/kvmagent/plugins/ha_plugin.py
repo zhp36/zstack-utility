@@ -44,7 +44,7 @@ class HaPlugin(kvmagent.KvmAgent):
                     time.sleep(cmd.interval)
 
                     mon_url = '\;'.join(cmd.monUrls)
-                    mon_url = mon_url.replace(':', '\\:')
+                    mon_url = mon_url.replace(':', '\\\:')
                     touch = shell.ShellCmd('timeout %s qemu-img info rbd:%s:id=zstack:key=%s:auth_supported=cephx\;none:mon_host=%s' %
                                            (cmd.storageCheckerTimeout, cmd.heartbeatImagePath, cmd.userKey, mon_url))
                     touch(False)
