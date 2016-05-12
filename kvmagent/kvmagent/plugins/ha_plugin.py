@@ -68,9 +68,22 @@ class HaPlugin(kvmagent.KvmAgent):
 
                     failure += 1
                     if failure == cmd.maxAttempts:
-                        logger.warn('failed to read the heartbeat file[%s] %s times, we lost the connection to the storage,'
-                                    'shutdown ourselves' % (cmd.heartbeatImagePath, cmd.maxAttempts))
-                        shell.call('init 0')
+                        vm_uuid_list = shell.call("virsh list | grep running | awk '{print $2}'")
+                        for vm_uuid in vm_uuid_list.split('\n'):
+                            vm_uuid = vm_uuid.strip(' \t\n\r')
+                            vm_pid = shell.call("ps aux | grep qemu-kvm | grep %s | awk '{print $2}'" % vm_uuid)
+                            vm_pid = vm_pid.strip(' \t\n\r')
+                            kill = shell.ShellCmd('kill -9 %s' % vm_pid)
+                            kill(False)
+                            if kill.return_code == 0:
+                                logger.warn('kill the vm[uuid:%s, pid:%s] because we lost connection to the ceph storage.'
+                                            'failed to read the heartbeat file[%s] %s times' % (vm_uuid, vm_pid, cmd.heartbeatImagePath, cmd.maxAttempts))
+                            else:
+                                logger.warn('failed to kill the vm[uuid:%s, pid:%s] %s' % (vm_uuid, vm_pid, kill.stderr))
+
+                        # reset the failure count
+                        failure = 0
+
             except:
                 content = traceback.format_exc()
                 logger.warn(content)
