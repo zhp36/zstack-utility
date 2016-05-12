@@ -55,7 +55,7 @@ class HaPlugin(kvmagent.KvmAgent):
 
                     if touch.return_code != 0 and 'No such file or directory' in touch.stderr:
                         # the heart beat file is not there, create it
-                        create = shell.ShellCmd('timeout %s qemu-img create -f raw rbd:%s:id=zstack:key=%s:auth_supported=cephx\;none:mon_host=mon_host=%s 1' %
+                        create = shell.ShellCmd('timeout %s qemu-img create -f raw rbd:%s:id=zstack:key=%s:auth_supported=cephx\;none:mon_host=%s 1' %
                                                 (cmd.storageCheckerTimeout, cmd.heartbeatImagePath, cmd.userKey, mon_url))
                         create(False)
                         if touch.return_code == 0:
