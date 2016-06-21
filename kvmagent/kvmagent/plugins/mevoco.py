@@ -76,15 +76,32 @@ class DhcpEnv(object):
     #         shell.call('ebtables %s' % rule.replace('-A', '-D'))
     #         logger.debug('deleted a stable rule[%s]' % rule)
 
+    @lock.lock('prepare_dhcp_namespace')
     def prepare(self):
+        namespace_id = None
+
+        out = shell.call("ip netns list-id | grep -w %s | awk '{print $2}'" % self.namespace_name)
+        out = out.strip(' \t\n\r')
+        if not out:
+            ret = shell.call("ip netns list-id | tail -n 1 | awk '{print $2}'")
+            ret = ret.strip(' \t\n\r')
+            if not ret:
+                namespace_id = 0
+            else:
+                namespace_id = int(ret) + 1
+        else:
+            namespace_id = int(out)
+
+        logger.debug('use id[%s] for the namespace[%s]' % (namespace_id, self.namespace_name))
+
         cmd = '''\
 BR_NAME="{{bridge_name}}"
 DHCP_IP="{{dhcp_server_ip}}"
 DHCP_NETMASK="{{dhcp_netmask}}"
 BR_PHY_DEV="{{br_dev}}"
 NS_NAME="{{namespace_name}}"
+BR_NUM="{{namespace_id}}"
 
-BR_NUM=`ip link show $BR_NAME | grep $BR_NAME | cut -d":" -f1`
 OUTER_DEV="outer$BR_NUM"
 INNER_DEV="inner$BR_NUM"
 
@@ -95,6 +112,8 @@ exit_on_error() {
 ip netns exec $NS_NAME ip link show
 if [ $? -ne 0 ]; then
     ip netns add $NS_NAME
+    exit_on_error
+    ip netns set $NS_NAME $BR_NUM
     exit_on_error
 fi
 
@@ -178,7 +197,8 @@ exit 0
             'dhcp_server_ip': self.dhcp_server_ip,
             'dhcp_netmask': self.dhcp_netmask,
             'br_dev': self.bridge_name.lstrip('br_'),
-            'namespace_name': self.namespace_name
+            'namespace_name': self.namespace_name,
+            'namespace_id': namespace_id
         })
 
         shell.call(cmd)
@@ -230,7 +250,7 @@ class Mevoco(kvmagent.KvmAgent):
 
     @kvmagent.replyerror
     def connect(self, req):
-        shell.call('etables -F')
+        shell.call('ebtables -F')
         return jsonobject.dumps(ConnectRsp())
 
     def batch_apply_userdata(self, req):
@@ -555,8 +575,11 @@ dhcp-range={{g}},static
 {% endfor -%}
 '''
 
-            br_num = shell.call('ip link show %s | grep -w %s | cut -d":" -f1' % (bridge_name, bridge_name))
-            br_num = br_num.strip('\t\n\r ')
+            br_num = shell.call("ip netns list-id | grep -w %s | awk '{print $2}'" % namespace_name)
+            br_num = br_num.strip(' \t\r\n')
+            if not br_num:
+                raise Exception('cannot find the ID for the namespace[%s]' % namespace_name)
+
             tmpt = Template(conf_file)
             conf_file = tmpt.render({
                 'dns': dns_path,
