@@ -525,23 +525,23 @@ mimetype.assign = (
     def reset_default_gateway(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
 
-        if cmd.bridgeNameOfGatewayToRemove and cmd.macOfGatewayToRemove and cmd.gatewayToRemove:
-            conf_file_path, _, _, option_path, _ = self._make_conf_path(cmd.bridgeNameOfGatewayToRemove)
+        if cmd.namespaceNameOfGatewayToRemove and cmd.macOfGatewayToRemove and cmd.gatewayToRemove:
+            conf_file_path, _, _, option_path, _ = self._make_conf_path(cmd.namespaceNameOfGatewayToRemove)
             mac_to_remove = cmd.macOfGatewayToRemove.replace(':', '')
 
             def is_line_to_delete(line):
                 return cmd.gatewayToRemove in line and mac_to_remove in line and 'router' in line
 
             linux.delete_lines_from_file(option_path, is_line_to_delete)
-            self._refresh_dnsmasq(cmd.bridgeNameOfGatewayToRemove, conf_file_path)
+            self._refresh_dnsmasq(cmd.namespaceNameOfGatewayToRemove, conf_file_path)
 
-        if cmd.bridgeNameOfGatewayToAdd and cmd.macOfGatewayToAdd and cmd.gatewayToAdd:
-            conf_file_path, _, _, option_path, _ = self._make_conf_path(cmd.bridgeNameOfGatewayToAdd)
+        if cmd.namespaceNameOfGatewayToAdd and cmd.macOfGatewayToAdd and cmd.gatewayToAdd:
+            conf_file_path, _, _, option_path, _ = self._make_conf_path(cmd.namespaceNameOfGatewayToAdd)
             option = 'tag:%s,option:router,%s\n' % (cmd.macOfGatewayToAdd.replace(':', ''), cmd.gatewayToAdd)
             with open(option_path, 'a+') as fd:
                 fd.write(option)
 
-            self._refresh_dnsmasq(cmd.bridgeNameOfGatewayToAdd, conf_file_path)
+            self._refresh_dnsmasq(cmd.namespaceNameOfGatewayToAdd, conf_file_path)
 
         return jsonobject.dumps(ResetGatewayRsp())
 
