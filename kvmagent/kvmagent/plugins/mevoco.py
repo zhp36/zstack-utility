@@ -251,10 +251,19 @@ class Mevoco(kvmagent.KvmAgent):
     @kvmagent.replyerror
     def connect(self, req):
         shell.call('ebtables -F')
+        shell.call('ebtables -t nat -F')
         return jsonobject.dumps(ConnectRsp())
 
     def batch_apply_userdata(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
+
+        def kill_all_lighttpd_with_namespaces():
+            for u in cmd.userdata:
+                shell.call("ps aux | grep -w lighttpd | grep -w %s | awk '{print $2}' | xargs kill -9 || exit 0" % u.namespaceName)
+
+        if cmd.rebuild:
+            kill_all_lighttpd_with_namespaces()
+
         for u in cmd.userdata:
             self._apply_userdata(u)
         return jsonobject.dumps(kvmagent.AgentResponse())
@@ -299,7 +308,7 @@ exit 0
 '''
         tmpt = Template(set_vip_cmd)
         set_vip_cmd = tmpt.render({
-            'ns_name': to.bridgeName,
+            'ns_name': to.namespaceName,
             'dhcp_ip': to.dhcpServerIp,
         })
         shell.call(set_vip_cmd)
@@ -343,7 +352,7 @@ exit 0
         tmpt = Template(set_ebtables)
         set_ebtables = tmpt.render({
             'br_name': to.bridgeName,
-            'ns_name': to.bridgeName,
+            'ns_name': to.namespaceName,
         })
         shell.call(set_ebtables)
 
@@ -458,7 +467,7 @@ mimetype.assign = (
 
         pid = linux.find_process_by_cmdline([conf_path])
         if not pid:
-            shell.call('ip netns exec %s lighttpd -f %s' % (to.bridgeName, conf_path))
+            shell.call('ip netns exec %s lighttpd -f %s' % (to.namespaceName, conf_path))
 
             def check(_):
                 pid = linux.find_process_by_cmdline([conf_path])
