@@ -254,26 +254,24 @@ class Mevoco(kvmagent.KvmAgent):
         shell.call('ebtables -t nat -F')
         return jsonobject.dumps(ConnectRsp())
 
+    @kvmagent.replyerror
     def batch_apply_userdata(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
 
-        def kill_all_lighttpd_with_namespaces():
-            for u in cmd.userdata:
-                shell.call("ps aux | grep -w lighttpd | grep -w %s | awk '{print $2}' | xargs kill -9 || exit 0" % u.namespaceName)
-
         if cmd.rebuild:
-            kill_all_lighttpd_with_namespaces()
+            # kill all lighttped processes which will be restarted later
+            shell.call('pkill -9 lighttpd || true')
 
         for u in cmd.userdata:
             self._apply_userdata(u)
         return jsonobject.dumps(kvmagent.AgentResponse())
 
+    @kvmagent.replyerror
     def apply_userdata(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         self._apply_userdata(cmd.userdata)
         return jsonobject.dumps(ApplyUserdataRsp())
 
-    @kvmagent.replyerror
     @lock.lock('iptables')
     def _apply_userdata(self, to):
         set_vip_cmd = '''
@@ -396,7 +394,7 @@ exit 0
         })
         shell.call(dnat_port_cmd)
 
-        conf_folder = os.path.join(self.USERDATA_ROOT, to.bridgeName)
+        conf_folder = os.path.join(self.USERDATA_ROOT, to.namespaceName)
         if not os.path.exists(conf_folder):
             shell.call('mkdir -p %s' % conf_folder)
 
