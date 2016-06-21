@@ -49,6 +49,7 @@ class DhcpEnv(object):
         self.bridge_name = None
         self.dhcp_server_ip = None
         self.dhcp_netmask = None
+        self.namespace_name = None
 
     # def _cleanup_old_ebtable_rules(self):
     #     scmd = shell.ShellCmd('ebtables -L| grep ":ZSTACK*"')
@@ -81,6 +82,7 @@ BR_NAME="{{bridge_name}}"
 DHCP_IP="{{dhcp_server_ip}}"
 DHCP_NETMASK="{{dhcp_netmask}}"
 BR_PHY_DEV="{{br_dev}}"
+NS_NAME="{{namespace_name}}"
 
 BR_NUM=`ip link show $BR_NAME | grep $BR_NAME | cut -d":" -f1`
 OUTER_DEV="outer$BR_NUM"
@@ -90,15 +92,15 @@ exit_on_error() {
     [ $? -ne 0 ] && exit 1
 }
 
-ip netns exec $BR_NAME ip link show
+ip netns exec $NS_NAME ip link show
 if [ $? -ne 0 ]; then
-    ip netns add $BR_NAME
+    ip netns add $NS_NAME
     exit_on_error
 fi
 
 # in case the namespace deleted and the orphan outer link leaves in the system,
 # deleting the orphan link and recreate it
-ip netns exec $BR_NAME ip link | grep -w $INNER_DEV > /dev/null
+ip netns exec $NS_NAME ip link | grep -w $INNER_DEV > /dev/null
 if [ $? -ne 0 ]; then
    ip link del $OUTER_DEV &> /dev/null
 fi
@@ -118,21 +120,21 @@ if [ $? -ne 0 ]; then
     exit_on_error
 fi
 
-ip netns exec $BR_NAME ip link | grep -w $INNER_DEV > /dev/null
+ip netns exec $NS_NAME ip link | grep -w $INNER_DEV > /dev/null
 if [ $? -ne 0 ]; then
     ip link set $INNER_DEV netns $BR_NAME
     exit_on_error
 fi
 
-ip netns exec $BR_NAME ip addr show $INNER_DEV | grep -w $DHCP_IP > /dev/null
+ip netns exec $NS_NAME ip addr show $INNER_DEV | grep -w $DHCP_IP > /dev/null
 if [ $? -ne 0 ]; then
-    ip netns exec $BR_NAME ip addr flush dev $INNER_DEV
+    ip netns exec $NS_NAME ip addr flush dev $INNER_DEV
     exit_on_error
-    ip netns exec $BR_NAME ip addr add $DHCP_IP/$DHCP_NETMASK dev $INNER_DEV
+    ip netns exec $NS_NAME ip addr add $DHCP_IP/$DHCP_NETMASK dev $INNER_DEV
     exit_on_error
 fi
 
-ip netns exec $BR_NAME ip link set $INNER_DEV up
+ip netns exec $NS_NAME ip link set $INNER_DEV up
 exit_on_error
 
 CHAIN_NAME="ZSTACK-$DHCP_IP"
@@ -175,7 +177,8 @@ exit 0
             'bridge_name': self.bridge_name,
             'dhcp_server_ip': self.dhcp_server_ip,
             'dhcp_netmask': self.dhcp_netmask,
-            'br_dev': self.bridge_name.lstrip('br_')
+            'br_dev': self.bridge_name.lstrip('br_'),
+            'namespace_name': self.namespace_name
         })
 
         shell.call(cmd)
@@ -222,7 +225,7 @@ class Mevoco(kvmagent.KvmAgent):
         if dns_pid:
             shell.call("kill -9 %s" % dns_pid)
 
-        shell.call('ip netns | grep -w %s > /dev/null && ip netns del %s' % (cmd.bridgeName, cmd.bridgeName))
+        shell.call('ip netns | grep -w %s > /dev/null && ip netns del %s' % (cmd.bridgeName, cmd.namespaceName))
         return jsonobject.dumps(DeleteNamespaceRsp())
 
     @kvmagent.replyerror
@@ -485,6 +488,7 @@ mimetype.assign = (
         p.bridge_name = cmd.bridgeName
         p.dhcp_server_ip = cmd.dhcpServerIp
         p.dhcp_netmask = cmd.dhcpNetmask
+        p.namespace_name = cmd.namespaceName
         p.prepare()
 
         return jsonobject.dumps(PrepareDhcpRsp())
@@ -528,7 +532,8 @@ mimetype.assign = (
             lst.append(d)
 
         def apply(bridge_name, dhcp):
-            conf_file_path, dhcp_path, dns_path, option_path, log_path = self._make_conf_path(bridge_name)
+            namespace_name = dhcp[0].namespaceName
+            conf_file_path, dhcp_path, dns_path, option_path, log_path = self._make_conf_path(namespace_name)
 
             conf_file = '''\
 domain-needed
@@ -645,9 +650,9 @@ tag:{{o.tag}},option:netmask,{{o.netmask}}
                 fd.write(hostname_conf)
 
             if restart_dnsmasq:
-                self._restart_dnsmasq(bridge_name, conf_file_path)
+                self._restart_dnsmasq(namespace_name, conf_file_path)
             else:
-                self._refresh_dnsmasq(bridge_name, conf_file_path)
+                self._refresh_dnsmasq(namespace_name, conf_file_path)
 
         for k, v in bridge_dhcp.iteritems():
             apply(k, v)
@@ -730,7 +735,7 @@ sed -i '/^$/d' {{dns}}
             for d in dhcp:
                 self._erase_configurations(d.mac, d.ip, dhcp_path, dns_path, option_path)
                 #shell.call("(which dhcp_release &>/dev/null && dhcp_release %s %s %s) || true" % (bridge_name, d.ip, d.mac))
-                self._restart_dnsmasq(bridge_name, conf_file_path)
+                self._restart_dnsmasq(d.namespaceName, conf_file_path)
 
         for k, v in bridge_dhcp.iteritems():
             release(k, v)
