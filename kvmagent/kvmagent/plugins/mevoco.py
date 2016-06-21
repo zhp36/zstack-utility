@@ -240,12 +240,8 @@ class Mevoco(kvmagent.KvmAgent):
     @kvmagent.replyerror
     def delete_dhcp_namespace(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
-        dns_pid = shell.call("ps aux | grep -w dnsmasq | grep -w %s | awk '{printf $2}'" % cmd.bridgeName)
-        dns_pid = dns_pid.strip(' \t\n\r')
-        if dns_pid:
-            shell.call("kill -9 %s" % dns_pid)
-
-        shell.call('ip netns | grep -w %s > /dev/null && ip netns del %s' % (cmd.bridgeName, cmd.namespaceName))
+        shell.call("ps aux | grep -v grep | grep -w dnsmasq | grep -w %s | awk '{printf $2}' | xargs -r kill -9" % cmd.namespaceName)
+        shell.call('ip netns | grep -w %s > /dev/null && ip netns del %s' % (cmd.namespaceName, cmd.namespaceName))
         return jsonobject.dumps(DeleteNamespaceRsp())
 
     @kvmagent.replyerror
@@ -477,7 +473,7 @@ mimetype.assign = (
     @kvmagent.replyerror
     def release_userdata(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
-        html_folder = os.path.join(self.USERDATA_ROOT, cmd.bridgeName, 'html', cmd.vmIp)
+        html_folder = os.path.join(self.USERDATA_ROOT, cmd.namespaceName, 'html', cmd.vmIp)
         shell.call('rm -rf %s' % html_folder)
         return jsonobject.dumps(ReleaseUserdataRsp())
 
@@ -761,9 +757,8 @@ sed -i '/^$/d' {{dns}}
             lst.append(d)
 
         def release(dhcp):
-            conf_file_path, dhcp_path, dns_path, option_path, _ = self._make_conf_path(dhcp.namespaceName)
-
             for d in dhcp:
+                conf_file_path, dhcp_path, dns_path, option_path, _ = self._make_conf_path(d.namespaceName)
                 self._erase_configurations(d.mac, d.ip, dhcp_path, dns_path, option_path)
                 #shell.call("(which dhcp_release &>/dev/null && dhcp_release %s %s %s) || true" % (bridge_name, d.ip, d.mac))
                 self._restart_dnsmasq(d.namespaceName, conf_file_path)
