@@ -159,10 +159,14 @@ exit_on_error
 CHAIN_NAME="ZSTACK-$DHCP_IP"
 
 ebtables -L "$CHAIN_NAME" > /dev/null 2>&1
-
 if [ $? -ne 0 ]; then
     ebtables -N $CHAIN_NAME
+fi
+
+ebtables -L FORWARD | grep -- "-j $CHAIN_NAME"
+if [ $? -ne 0 ]; then
     ebtables -I FORWARD -j $CHAIN_NAME
+    exit_on_error
 fi
 
 ebtables -L $CHAIN_NAME| grep -- "-p ARP -o $BR_PHY_DEV --arp-ip-dst $DHCP_IP -j DROP" > /dev/null
@@ -196,7 +200,7 @@ exit 0
             'bridge_name': self.bridge_name,
             'dhcp_server_ip': self.dhcp_server_ip,
             'dhcp_netmask': self.dhcp_netmask,
-            'br_dev': self.bridge_name.lstrip('br_'),
+            'br_dev': self.bridge_name.replace('br_', '', 1),
             'namespace_name': self.namespace_name,
             'namespace_id': namespace_id
         })
@@ -310,6 +314,7 @@ exit 0
         set_ebtables = '''
 BR_NAME={{br_name}}
 NS_NAME={{ns_name}}
+ETH_NAME={{eth_name}}
 
 NS="ip netns exec $NS_NAME"
 
@@ -330,7 +335,23 @@ ebtables -t nat -L $CHAIN_NAME >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     ebtables -t nat -N $CHAIN_NAME
     exit_on_error $LINENO
-    ebtables -t nat -I PREROUTING --logical-in $BR_NAME -j $CHAIN_NAME
+fi
+
+ebtables -L FORWARD | grep -- "-p ARP --arp-ip-dst 169.254.169.254 -j $CHAIN_NAME" > /dev/null
+if [ $? -ne 0 ]; then
+    ebtables -I FORWARD -p ARP --arp-ip-dst 169.254.169.254 -j $CHAIN_NAME
+    exit_on_error $LINENO
+fi
+
+ebtables -L $CHAIN_NAME | grep "-i $ETH_NAME -j DROP" > /dev/null
+if [ $? -ne 0 ]; then
+    ebtables -I $CHAIN_NAME -i $ETH_NAME -j DROP
+    exit_on_error $LINENO
+fi
+
+ebtables -L $CHAIN_NAME | grep "-o $ETH_NAME -j DROP" > /dev/null
+if [ $? -ne 0 ]; then
+    ebtables -I $CHAIN_NAME -o $ETH_NAME -j DROP
     exit_on_error $LINENO
 fi
 
@@ -338,6 +359,14 @@ rule="-p IPv4 --ip-dst 169.254.169.254 -j dnat --to-dst $mac --dnat-target ACCEP
 ebtables -t nat -L $CHAIN_NAME| grep -- "$rule" > /dev/null
 if [ $? -ne 0 ]; then
     ebtables -t nat -I $CHAIN_NAME $rule
+    exit_on_error $LINENO
+fi
+
+ebtables -t filter -L $CHAIN_NAME >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    ebtables -t filter -N $CHAIN_NAME
+    exit_on_error $LINENO
+    ebtables -t filter -I PREROUTING --logical-in $BR_NAME -j $CHAIN_NAME
     exit_on_error $LINENO
 fi
 
