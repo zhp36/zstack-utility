@@ -92,7 +92,7 @@ class DhcpEnv(object):
             else:
                 NAMESPACE_ID = int(out) + 1
         else:
-            NAMESPACE_ID = int(out) + 1
+            NAMESPACE_ID = int(out)
 
         logger.debug('use id[%s] for the namespace[%s]' % (NAMESPACE_ID, NAMESPACE_NAME))
 
@@ -128,9 +128,9 @@ class DhcpEnv(object):
         ret = bash_r('ip netns exec {{NAMESPACE_NAME}} ip addr show {{INNER_DEV}} | grep -w {{DHCP_IP}} > /dev/null')
         if ret != 0:
             bash_errorout('ip netns exec {{NAMESPACE_NAME}} ip addr flush dev {{INNER_DEV}}')
-            bash_errorout('ip netns exec {{NS_NAME}} ip addr add {{DHCP_IP}}/{{DHCP_NETMASK}} dev {{INNER_DEV}}')
+            bash_errorout('ip netns exec {{NAMESPACE_NAME}} ip addr add {{DHCP_IP}}/{{DHCP_NETMASK}} dev {{INNER_DEV}}')
 
-        bash_errorout('ip netns exec {{NS_NAME}} ip link set {{INNER_DEV}} up')
+        bash_errorout('ip netns exec {{NAMESPACE_NAME}} ip link set {{INNER_DEV}} up')
 
         ret = bash_r('ebtables -L {{CHAIN_NAME}} > /dev/null 2>&1')
         if ret != 0:
