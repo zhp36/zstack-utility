@@ -1,3 +1,4 @@
+
 __author__ = 'frank'
 
 from kvmagent import kvmagent
@@ -11,6 +12,7 @@ from zstacklib.utils import linux
 from zstacklib.utils import thread
 from zstacklib.utils import iptables
 from zstacklib.utils import lock
+from zstacklib.utils.bash import *
 import os.path
 import re
 import threading
@@ -77,135 +79,82 @@ class DhcpEnv(object):
     #         logger.debug('deleted a stable rule[%s]' % rule)
 
     @lock.lock('prepare_dhcp_namespace')
+    @in_bash
     def prepare(self):
-        namespace_id = None
+        NAMESPACE_ID = None
 
-        out = shell.call("ip netns list-id | grep -w %s | awk '{print $2}'" % self.namespace_name)
-        out = out.strip(' \t\n\r')
+        NAMESPACE_NAME = self.namespace_name
+        out = bash_errorout("ip netns list-id | grep -w {{NAMESPACE_NAME}} | awk '{print $2}'").strip(' \t\n\r')
         if not out:
-            ret = shell.call("ip netns list-id | tail -n 1 | awk '{print $2}'")
-            ret = ret.strip(' \t\n\r')
-            if not ret:
-                namespace_id = 0
+            out = bash_errorout("ip netns list-id | tail -n 1 | awk '{print $2}'").strip(' \t\r\n')
+            if not out:
+                NAMESPACE_ID = 0
             else:
-                namespace_id = int(ret) + 1
+                NAMESPACE_ID = int(out) + 1
         else:
-            namespace_id = int(out)
+            NAMESPACE_ID = int(out) + 1
 
-        logger.debug('use id[%s] for the namespace[%s]' % (namespace_id, self.namespace_name))
+        logger.debug('use id[%s] for the namespace[%s]' % (NAMESPACE_ID, NAMESPACE_NAME))
 
-        cmd = '''\
-BR_NAME="{{bridge_name}}"
-DHCP_IP="{{dhcp_server_ip}}"
-DHCP_NETMASK="{{dhcp_netmask}}"
-BR_PHY_DEV="{{br_dev}}"
-NS_NAME="{{namespace_name}}"
-BR_NUM="{{namespace_id}}"
+        BR_NAME = self.bridge_name
+        DHCP_IP = self.dhcp_server_ip
+        DHCP_NETMASK = self.dhcp_netmask
+        BR_PHY_DEV = self.bridge_name.replace('br_', '', 1)
+        OUTER_DEV = "outer%s" % NAMESPACE_ID
+        INNER_DEV = "inner%s" % NAMESPACE_ID
+        CHAIN_NAME = "ZSTACK-%s" % DHCP_IP
 
-OUTER_DEV="outer$BR_NUM"
-INNER_DEV="inner$BR_NUM"
+        ret = bash_r('ip netns exec {{NAMESPACE_NAME}} ip link show')
+        if ret != 0:
+            bash_errorout('ip netns add {{NAMESPACE_NAME}}')
+            bash_errorout('ip netns set {{NAMESPACE_NAME}} {{NAMESPACE_ID}}')
 
-exit_on_error() {
-    [ $? -ne 0 ] && exit 1
-}
+        # in case the namespace deleted and the orphan outer link leaves in the system,
+        # deleting the orphan link and recreate it
+        ret = bash_r('ip netns exec {{NAMESPACE_NAME}} ip link | grep -w {{INNER_DEV}} > /dev/null')
+        if ret != 0:
+            bash_r('ip link del {{OUTER_DEV}} &> /dev/null')
 
-ip netns exec $NS_NAME ip link show
-if [ $? -ne 0 ]; then
-    ip netns add $NS_NAME
-    exit_on_error
-    ip netns set $NS_NAME $BR_NUM
-    exit_on_error
-fi
+        ret = bash_r('ip link | grep -w {{OUTER_DEV}} > /dev/null')
+        if ret != 0:
+            bash_errorout('ip link add {{OUTER_DEV}} type veth peer name {{INNER_DEV}}')
 
-# in case the namespace deleted and the orphan outer link leaves in the system,
-# deleting the orphan link and recreate it
-ip netns exec $NS_NAME ip link | grep -w $INNER_DEV > /dev/null
-if [ $? -ne 0 ]; then
-   ip link del $OUTER_DEV &> /dev/null
-fi
+        bash_errorout('ip link set {{OUTER_DEV}} up')
 
-ip link | grep -w $OUTER_DEV > /dev/null
-if [ $? -ne 0 ]; then
-    ip link add $OUTER_DEV type veth peer name $INNER_DEV
-    exit_on_error
-fi
+        ret = bash_r('brctl show {{BR_NAME}} | grep -w {{OUTER_DEV}} > /dev/null')
+        if ret != 0:
+            bash_errorout('ip link set {{INNER_DEV}} netns {{NAMESPACE_NAME}}')
 
-ip link set $OUTER_DEV up
-exit_on_error
+        ret = bash_r('ip netns exec {{NAMESPACE_NAME}} ip addr show {{INNER_DEV}} | grep -w {{DHCP_IP}} > /dev/null')
+        if ret != 0:
+            bash_errorout('ip netns exec {{NAMESPACE_NAME}} ip addr flush dev {{INNER_DEV}}')
+            bash_errorout('ip netns exec {{NS_NAME}} ip addr add {{DHCP_IP}}/{{DHCP_NETMASK}} dev {{INNER_DEV}}')
 
-brctl show $BR_NAME | grep -w $OUTER_DEV > /dev/null
-if [ $? -ne 0 ]; then
-    brctl addif $BR_NAME $OUTER_DEV
-    exit_on_error
-fi
+        bash_errorout('ip netns exec {{NS_NAME}} ip link set {{INNER_DEV}} up')
 
-ip netns exec $NS_NAME ip link | grep -w $INNER_DEV > /dev/null
-if [ $? -ne 0 ]; then
-    ip link set $INNER_DEV netns $NS_NAME
-    exit_on_error
-fi
+        ret = bash_r('ebtables -L {{CHAIN_NAME}} > /dev/null 2>&1')
+        if ret != 0:
+            bash_errorout('ebtables -N {{CHAIN_NAME}}')
 
-ip netns exec $NS_NAME ip addr show $INNER_DEV | grep -w $DHCP_IP > /dev/null
-if [ $? -ne 0 ]; then
-    ip netns exec $NS_NAME ip addr flush dev $INNER_DEV
-    exit_on_error
-    ip netns exec $NS_NAME ip addr add $DHCP_IP/$DHCP_NETMASK dev $INNER_DEV
-    exit_on_error
-fi
+        ret = bash_r('ebtables -L FORWARD | grep -- "-j {{CHAIN_NAME}}" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -I FORWARD -j {{CHAIN_NAME}}')
 
-ip netns exec $NS_NAME ip link set $INNER_DEV up
-exit_on_error
+        ret = bash_r('ebtables -L {{CHAIN_NAME}} | grep -- "-p ARP -o {{BR_PHY_DEV}} --arp-ip-dst {{DHCP_IP}} -j DROP" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -I {{CHAIN_NAME}} -p ARP -o {{BR_PHY_DEV}} --arp-ip-dst {{DHCP_IP}} -j DROP')
 
-CHAIN_NAME="ZSTACK-$DHCP_IP"
+        ret = bash_r('ebtables -L {{CHAIN_NAME}} | grep -- "-p ARP -i {{BR_PHY_DEV}} --arp-ip-dst {{DHCP_IP}} -j DROP" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -I {{CHAIN_NAME}} -p ARP -i {{BR_PHY_DEV}} --arp-ip-dst {{DHCP_IP}} -j DROP')
 
-ebtables -L "$CHAIN_NAME" > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    ebtables -N $CHAIN_NAME
-fi
+        ret = bash_r('ebtables -L {{CHAIN_NAME}} | grep -- "-p IPv4 -o {{BR_PHY_DEV}} --ip-proto udp --ip-sport 67:68 -j DROP" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -I {{CHAIN_NAME}} -p IPv4 -o {{BR_PHY_DEV}} --ip-proto udp --ip-sport 67:68 -j DROP')
 
-ebtables -L FORWARD | grep -- "-j $CHAIN_NAME"
-if [ $? -ne 0 ]; then
-    ebtables -I FORWARD -j $CHAIN_NAME
-    exit_on_error
-fi
-
-ebtables -L $CHAIN_NAME| grep -- "-p ARP -o $BR_PHY_DEV --arp-ip-dst $DHCP_IP -j DROP" > /dev/null
-if [ $? -ne 0 ]; then
-    ebtables -I $CHAIN_NAME -p ARP -o $BR_PHY_DEV --arp-ip-dst $DHCP_IP -j DROP
-    exit_on_error
-fi
-
-ebtables -L $CHAIN_NAME| grep -- "-p ARP -i $BR_PHY_DEV --arp-ip-dst $DHCP_IP -j DROP" > /dev/null
-if [ $? -ne 0 ]; then
-    ebtables -I $CHAIN_NAME -p ARP -i $BR_PHY_DEV --arp-ip-dst $DHCP_IP -j DROP
-    exit_on_error
-fi
-
-ebtables -L $CHAIN_NAME | grep -- "-p IPv4 -o $BR_PHY_DEV --ip-proto udp --ip-sport 67:68 -j DROP" > /dev/null
-if [ $? -ne 0 ]; then
-    ebtables -I $CHAIN_NAME -p IPv4 -o $BR_PHY_DEV --ip-proto udp --ip-sport 67:68 -j DROP
-    exit_on_error
-fi
-
-ebtables -L $CHAIN_NAME| grep -- "-p IPv4 -i $BR_PHY_DEV --ip-proto udp --ip-sport 67:68 -j DROP" > /dev/null
-if [ $? -ne 0 ]; then
-    ebtables -I $CHAIN_NAME -p IPv4 -i $BR_PHY_DEV --ip-proto udp --ip-sport 67:68 -j DROP
-    exit_on_error
-fi
-
-exit 0
-'''
-        tmpt = Template(cmd)
-        cmd = tmpt.render({
-            'bridge_name': self.bridge_name,
-            'dhcp_server_ip': self.dhcp_server_ip,
-            'dhcp_netmask': self.dhcp_netmask,
-            'br_dev': self.bridge_name.replace('br_', '', 1),
-            'namespace_name': self.namespace_name,
-            'namespace_id': namespace_id
-        })
-
-        shell.call(cmd)
+        ret = bash_r('ebtables -L {{CHAIN_NAME}} | grep -- "-p IPv4 -i {{BR_PHY_DEV}} --ip-proto udp --ip-sport 67:68 -j DROP" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -I {{CHAIN_NAME}} -p IPv4 -i {{BR_PHY_DEV}} --ip-proto udp --ip-sport 67:68 -j DROP')
 
 class Mevoco(kvmagent.KvmAgent):
     APPLY_DHCP_PATH = "/flatnetworkprovider/dhcp/apply"
