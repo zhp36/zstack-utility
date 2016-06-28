@@ -98,6 +98,10 @@ class DhcpEnv(object):
 
         ret = bash_r('brctl show {{BR_NAME}} | grep -w {{OUTER_DEV}} > /dev/null')
         if ret != 0:
+            bash_errorout('brctl addif {{BR_NAME}} {{OUTER_DEV}}')
+
+        ret = bash_r('ip netns exec {{NAMESPACE_NAME}} ip link | grep -w {{INNER_DEV}} > /dev/null')
+        if ret != 0:
             bash_errorout('ip link set {{INNER_DEV}} netns {{NAMESPACE_NAME}}')
 
         ret = bash_r('ip netns exec {{NAMESPACE_NAME}} ip addr show {{INNER_DEV}} | grep -w {{DHCP_IP}} > /dev/null')
@@ -199,69 +203,69 @@ class Mevoco(kvmagent.KvmAgent):
     @lock.lock('iptables')
     @in_bash
     def _apply_userdata(self, to):
-        def set_vip():
-            NS_NAME = to.namespaceName
-            DHCP_IP = to.dhcpServerIp
-            ret = bash_r('ip netns exec {{NS_NAME}} ip addr | grep 169.254.169.254 > /dev/null')
-            if ret != 0:
-                INNER_DEV = bash_errorout("ip netns exec {{NS_NAME}} ip addr | grep -w {{DHCP_IP}} | awk awk '{print $NF}'")
-                if not INNER_DEV:
-                    raise Exception('cannot find device for the DHCP IP[%s]' % DHCP_IP)
+        # set VIP
+        NS_NAME = to.namespaceName
+        DHCP_IP = to.dhcpServerIp
+        ret = bash_r('ip netns exec {{NS_NAME}} ip addr | grep 169.254.169.254 > /dev/null')
+        if ret != 0:
+            INNER_DEV = bash_errorout("ip netns exec {{NS_NAME}} ip addr | grep -w {{DHCP_IP}} | awk '{print $NF}'").strip(' \t\r\n')
+            if not INNER_DEV:
+                raise Exception('cannot find device for the DHCP IP[%s]' % DHCP_IP)
 
-                bash_errorout('ip netns exec {{NS_NAME}} ip addr add 169.254.169.254 dev {{INNER_DEV}}')
+            bash_errorout('ip netns exec {{NS_NAME}} ip addr add 169.254.169.254 dev {{INNER_DEV}}')
 
-        def set_ebtables():
-            BR_NAME = to.bridgeName
-            ETH_NAME = to.eth_name
-            MAC = bash_errorout("ip netns exec {{NS_NAME}} ip link show {{INNER_DEV}} | grep -w ether | awk '{print $2}'")
-            CHAIN_NAME="USERDATA-%s" % BR_NAME
+        # set ebtables
+        BR_NAME = to.bridgeName
+        ETH_NAME = BR_NAME.replace('br_', '', 1)
+        MAC = bash_errorout("ip netns exec {{NS_NAME}} ip link show {{INNER_DEV}} | grep -w ether | awk '{print $2}'").strip(' \t\r\n')
+        CHAIN_NAME="USERDATA-%s" % BR_NAME
 
-            ret = bash_r('ebtables -t nat -L {{CHAIN_NAME}} >/dev/null 2>&1')
-            if ret != 0:
-                bash_errorout('ebtables -t nat -N {{CHAIN_NAME}}')
+        ret = bash_r('ebtables -t nat -L {{CHAIN_NAME}} >/dev/null 2>&1')
+        if ret != 0:
+            bash_errorout('ebtables -t nat -N {{CHAIN_NAME}}')
 
-            ret = bash_r('ebtables -L FORWARD | grep -- "-p ARP --arp-ip-dst 169.254.169.254 -j {{CHAIN_NAME}}" > /dev/null')
-            if ret != 0:
-                bash_errorout('ebtables -I FORWARD -p ARP --arp-ip-dst 169.254.169.254 -j {{CHAIN_NAME}}')
+        ret = bash_r('ebtables -L FORWARD | grep -- "-p ARP --arp-ip-dst 169.254.169.254 -j {{CHAIN_NAME}}" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -I FORWARD -p ARP --arp-ip-dst 169.254.169.254 -j {{CHAIN_NAME}}')
 
-            ret = bash_r('ebtables -L {{CHAIN_NAME}} | grep "-i {{ETH_NAME}} -j DROP" > /dev/null')
-            if ret != 0:
-                bash_errorout('ebtables -I {{CHAIN_NAME}} -i {{ETH_NAME}} -j DROP')
+        ret = bash_r('ebtables -L {{CHAIN_NAME}} | grep -- "-i {{ETH_NAME}} -j DROP" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -I {{CHAIN_NAME}} -i {{ETH_NAME}} -j DROP')
 
-            ret = bash_r('ebtables -L {{CHAIN_NAME}} | grep "-o {{ETH_NAME}} -j DROP" > /dev/null')
-            if ret != 0:
-                bash_errorout('ebtables -I {{CHAIN_NAME}} -o {{ETH_NAME}} -j DROP')
+        ret = bash_r('ebtables -L {{CHAIN_NAME}} | grep -- "-o {{ETH_NAME}} -j DROP" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -I {{CHAIN_NAME}} -o {{ETH_NAME}} -j DROP')
 
-            RULE = "-p IPv4 --ip-dst 169.254.169.254 -j dnat --to-dst %s --dnat-target ACCEPT" % MAC
-            ret = bash_r('ebtables -t nat -L {{CHAIN_NAME}} | grep -- {{RULE}} > /dev/null')
-            if ret != 0:
-                bash_errorout('ebtables -t nat -I {{CHAIN_NAME}} {{RULE}}')
+        # ebtables has a bug that will eliminate 0 in MAC, for example, aa:bb:0c will become aa:bb:c
+        RULE = "-p IPv4 --ip-dst 169.254.169.254 -j dnat --to-dst %s --dnat-target ACCEPT" % MAC.replace(":0", ":")
+        ret = bash_r('ebtables -t nat -L {{CHAIN_NAME}} | grep -- "{{RULE}}" > /dev/null')
+        if ret != 0:
+            bash_errorout('ebtables -t nat -I {{CHAIN_NAME}} {{RULE}}')
 
-        def dnat_80_port():
-            PORT = to.port
-            CHAIN_NAME = "UD-PORT-%s" % PORT
+        # DNAT port 80
+        PORT = to.port
+        PORT_CHAIN_NAME = "UD-PORT-%s" % PORT
+        # delete old chains not matching our port
+        OLD_CHAIN = bash_errorout("iptables-save | awk '/^:UD-PORT-/{print substr($1,2)}'").strip(' \n\r\t')
+        if OLD_CHAIN and OLD_CHAIN != CHAIN_NAME:
+            ret = bash_r('iptables -t nat -L PREROUTING | grep {{OLD_CHAIN}}')
+            if ret == 0:
+                bash_r('iptables -t nat -D PREROUTING -j {{OLD_CHAIN}}')
 
-            # delete old chains not matching our port
-            OLD_CHAIN = bash_errorout("iptables-save | awk '/^:UD-PORT-/{print substr($1,2)}'")
-            if OLD_CHAIN and OLD_CHAIN != CHAIN_NAME:
-                bash_errorout('iptables -t nat -F {{OLD_CHAIN}}')
-                bash_errorout('iptables -t nat -X {{OLD_CHAIN}}')
+            bash_errorout('iptables -t nat -F {{OLD_CHAIN}}')
+            bash_errorout('iptables -t nat -X {{OLD_CHAIN}}')
 
-            ret = bash_r('iptables-save | grep -w ":{{CHAIN_NAME}}" > /dev/null')
-            if ret != 0:
-                bash_errorout('iptables -t nat -N {{CHAIN_NAME}}')
+        ret = bash_r('iptables-save | grep -w ":{{PORT_CHAIN_NAME}}" > /dev/null')
+        if ret != 0:
+            bash_errorout('iptables -t nat -N {{PORT_CHAIN_NAME}}')
 
-            ret = bash_r('iptables -t nat -L PREROUTING | grep -- "-j {{CHAIN_NAME}}"')
-            if ret != 0:
-                bash_errorout('iptables -t nat -I PREROUTING -j {{CHAIN_NAME}}')
+        ret = bash_r('iptables -t nat -L PREROUTING | grep -- "-j {{PORT_CHAIN_NAME}}"')
+        if ret != 0:
+            bash_errorout('iptables -t nat -I PREROUTING -j {{PORT_CHAIN_NAME}}')
 
-            ret = bash_r('iptables-save -t nat | grep -- "{{CHAIN_NAME}} -d 169.254.169.254/32 -p tcp -j DNAT --to-destination :{{PORT}}"')
-            if ret != 0:
-                bash_errorout('iptables -t nat -A {{CHAIN_NAME}} -d 169.254.169.254/32 -p tcp -j DNAT --to-destination :{{PORT}}')
-
-        set_vip()
-        set_ebtables()
-        dnat_80_port()
+        ret = bash_r('iptables-save -t nat | grep -- "{{PORT_CHAIN_NAME}} -d 169.254.169.254/32 -p tcp -j DNAT --to-destination :{{PORT}}"')
+        if ret != 0:
+            bash_errorout('iptables -t nat -A {{PORT_CHAIN_NAME}} -d 169.254.169.254/32 -p tcp -j DNAT --to-destination :{{PORT}}')
 
         conf_folder = os.path.join(self.USERDATA_ROOT, to.namespaceName)
         if not os.path.exists(conf_folder):

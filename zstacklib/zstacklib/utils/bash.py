@@ -4,11 +4,12 @@ import json
 from jinja2 import Template
 from zstacklib.utils import log
 import inspect
+import time
 
 logger = log.get_logger(__name__)
 
 # @return: return code, stdout, stderr
-def bash_roe(cmd):
+def bash_roe(cmd, errorout=False, ret_code = 0):
     frames = []
     frame = inspect.currentframe()
     while frame:
@@ -24,6 +25,7 @@ def bash_roe(cmd):
 
     p = subprocess.Popen('/bin/bash', stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
     o, e = p.communicate(cmd)
+    r = p.returncode
 
     __BASH_DEBUG_INFO__ = ctx.get('__BASH_DEBUG_INFO__')
     if __BASH_DEBUG_INFO__ is not None:
@@ -34,7 +36,10 @@ def bash_roe(cmd):
             'stderr': e
         })
 
-    return p.returncode, o, e
+    if r != ret_code:
+        raise Exception('failed to execute bash[%s], return code: %s, stdout: %s, stderr: %s' % (cmd, r, o, e))
+
+    return r, o, e
 
 # @return: return code, stdout
 def bash_ro(cmd):
@@ -53,9 +58,7 @@ def bash_r(cmd):
 
 # @return: stdout
 def bash_errorout(cmd, code=0):
-    ret, o, e = bash_roe(cmd)
-    if ret != code:
-        raise Exception('failed to execute bash[%s], return code: %s, stdout: %s, stderr: %s' % (cmd, ret, o, e))
+    _, o, _ = bash_roe(cmd, True, code)
     return o
 
 def in_bash(func):
@@ -63,10 +66,12 @@ def in_bash(func):
     def wrap(*args, **kwargs):
         __BASH_DEBUG_INFO__ = []
 
+        start_time = time.time()
         try:
             return func(*args, **kwargs)
         finally:
-            logger.debug('BASH COMMAND DETAILS IN %s: %s' % (func.__name__, json.dumps(__BASH_DEBUG_INFO__)))
+            end_time = time.time()
+            logger.debug('BASH COMMAND DETAILS IN %s [cost %s ms]: %s' % (func.__name__, (end_time - start_time) * 1000, json.dumps(__BASH_DEBUG_INFO__)))
             del __BASH_DEBUG_INFO__
 
     return wrap
