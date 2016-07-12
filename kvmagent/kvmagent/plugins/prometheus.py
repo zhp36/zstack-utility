@@ -21,9 +21,17 @@ class PrometheusPlugin(kvmagent.KvmAgent):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         rsp = kvmagent.AgentResponse()
 
-        interfaces = bash_o("ip link | grep -v link | awk -F: '{print $2}'").split('\n')
-        interfaces = [i for i in interfaces if i != 'lo' and not i.startswith('vnic') and not i.startswith('outer')
-                      and not i.startswith('br_')]
+        eths = bash_o("ls /sys/class/net").split()
+        interfaces = []
+        for eth in eths:
+            eth = eth.strip(' \t\n\r')
+            if eth == 'lo': continue
+            elif eth.startswith('vnic'): continue
+            elif eth.startswith('outer'): continue
+            elif eth.startswith('br_'): continue
+            elif not eth: continue
+            else:
+                interfaces.append(eth)
 
         conf_path = os.path.join(os.path.dirname(cmd.binaryPath), 'collectd.conf')
 
@@ -74,9 +82,9 @@ LoadPlugin virt
 
 <Plugin "interface">
 {% for i in INTERFACES -%}
-  Interface {{i}}
+  Interface "{{i}}"
 {% endfor -%}
-IgnoreSelected false
+  IgnoreSelected false
 </Plugin>
 
 <Plugin memory>
@@ -93,6 +101,7 @@ IgnoreSelected false
 <Plugin network>
 	Server "localhost" "25826"
 </Plugin>
+
 '''
 
         tmpt = Template(conf)
@@ -115,20 +124,26 @@ IgnoreSelected false
                 fd.write(conf)
             need_restart_collectd = True
 
-        if need_restart_collectd:
-            pid = linux.find_process_by_cmdline(['collectd', conf_path])
-            if pid:
-                bash_errorout('kill -9 %s' % pid)
+        pid = linux.find_process_by_cmdline(['collectd', conf_path])
+        if not pid:
             bash_errorout('collectd -C %s' % conf_path)
+        else:
+            if need_restart_collectd:
+                bash_errorout('kill -9 %s' % pid)
+                bash_errorout('collectd -C %s' % conf_path)
 
         pid = linux.find_process_by_cmdline(['collectd_exporter'])
         if not pid:
             EXPORTER_PATH = cmd.binaryPath
             LOG_FILE = os.path.join(os.path.dirname(EXPORTER_PATH), 'collectd_exporter.log')
-            bash_errorout("{{EXPORTER_PATH}} -collectd.listen-address :25826 >{{LOG_FILE}} 2>&1 < /dev/null &\ndisown")
+            bash_errorout('chmod +x {{EXPORTER_PATH}}')
+            bash_errorout("nohup {{EXPORTER_PATH}} -collectd.listen-address :25826 >{{LOG_FILE}} 2>&1 < /dev/null &\ndisown")
 
         return jsonobject.dumps(rsp)
 
     def start(self):
         http_server = kvmagent.get_http_server()
         http_server.register_async_uri(self.COLLECTD_PATH, self.start_collectd_exporter)
+
+    def stop(self):
+        pass
