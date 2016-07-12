@@ -16,9 +16,14 @@ class PrometheusPlugin(kvmagent.KvmAgent):
     COLLECTD_PATH = "/prometheus/collectdexporter/start"
 
     @kvmagent.replyerror
+    @in_bash
     def start_collectd_exporter(self, req):
         cmd = jsonobject.loads(req[http.REQUEST_BODY])
         rsp = kvmagent.AgentResponse()
+
+        interfaces = bash_o("ip link | grep -v link | awk -F: '{print $2}'").split('\n')
+        interfaces = [i for i in interfaces if i != 'lo' and not i.startswith('vnic') and not i.startswith('outer')
+                      and not i.startswith('br_')]
 
         conf_path = os.path.join(os.path.dirname(cmd.binaryPath), 'collectd.conf')
 
@@ -93,7 +98,7 @@ IgnoreSelected false
         tmpt = Template(conf)
         conf = tmpt.render({
             'INTERVAL': cmd.interval,
-            'INTERFACES': cmd.hostNics,
+            'INTERFACES': interfaces,
         })
 
         need_restart_collectd = False
