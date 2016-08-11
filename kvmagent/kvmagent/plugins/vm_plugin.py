@@ -65,6 +65,15 @@ class GetVncPortResponse(kvmagent.AgentResponse):
         self.port = None
         self.protocol = None
 
+class ChangeCpuMemResponse(kvmagent.AgentResponse):
+    def _init_(self):
+        super(ChangeCpuMemResponse, self)._init_()
+        self.cpuNum = None
+        self.memorySize = None
+        self.vmuuid
+
+
+
 class StopVmCmd(kvmagent.AgentCommand):
     def __init__(self):
         super(StopVmCmd, self).__init__()
@@ -1606,6 +1615,27 @@ class Vm(object):
         if not linux.wait_callback_success(check, None, 30, 1):
             raise Exception('cannot detach the cdrom from the VM[uuid:%s]. The device is still present after 30s' %
                             self.uuid)
+    def hotplug_mem(self, memory_size):
+
+        mem_size = memory_size - self.get_memory()
+        xml = "<memory model='dimm'><target><size unit='KiB'>%d</size><node>0</node></target></memory>"%mem_size
+        logger.debug('hot plug memory:\n %d KiB' % mem_size)
+        try:
+            self.domain.attachDeviceFlags(xml,libvirt.VIR_DOMAIN_AFFECT_LIVE|libvirt.VIR_DOMAIN_AFFECT_CONFIG)
+        except libvirt.libvirtError as ex:
+            err = str(ex)
+            logger.warn('unable to hotplug memory in vm[uuid:%s], %s' % (self.uuid, err))
+        return self.get_memory()
+
+    def hotplug_cpu(self, cpu_num):
+
+        logger.debug('set cpu:\n %d cpu' % cpu_num)
+        try:
+            self.domain.setVcpusFlags(cpu_num,libvirt.VIR_DOMAIN_AFFECT_LIVE|libvirt.VIR_DOMAIN_AFFECT_CONFIG)
+        except libvirt.libvirtError as ex:
+            err = str(ex)
+            logger.warn('unable to hotplug cpu in vm[uuid:%s], %s' %(self.uuid, err))
+        return self.get_cpu_num()
 
     @linux.retry(times=3, sleep_time=5)
     def _attach_nic(self, cmd):
@@ -1744,7 +1774,7 @@ class Vm(object):
 
         def make_cpu():
             root = elements['root']
-            e(root, 'vcpu', str(cmd.cpuNum), {'placement':'static'})
+            e(root, 'vcpu', '128', {'placement':'static', 'current':str(cmd.cpuNum)})
             tune = e(root, 'cputune')
             e(tune, 'shares', str(cmd.cpuSpeed * cmd.cpuNum))
             #enable nested virtualization
@@ -1757,11 +1787,16 @@ class Vm(object):
             else:
                 cpu = e(root, 'cpu')
 
-            e(cpu, 'topology', attrib={'sockets': str(cmd.socketNum), 'cores': str(cmd.cpuOnSocket), 'threads': '1'})
+            #e(cpu, 'topology', attrib={'sockets': str(cmd.socketNum), 'cores': str(cmd.cpuOnSocket), 'threads': '1'})
+                e(cpu, 'topology', attrib={'sockets': 32, 'cores': 32, 'threads': '1'})
+                numa = e(cpu, 'numa')
+                e(numa, 'cell', attrib={'id': 0, 'cpus':'0-127', 'memory': '1048576', 'unit':'KiB'})
+
 
         def make_memory():
             root = elements['root']
             mem = cmd.memory / 1024
+            e(root, 'maxMemory',str(104857600),{'slots':'32', 'unit':'KiB'})
             e(root, 'memory', str(mem), {'unit':'k'})
             e(root, 'currentMemory', str(mem), {'unit':'k'})
 
@@ -2094,6 +2129,7 @@ class VmPlugin(kvmagent.KvmAgent):
     KVM_STOP_VM_PATH = "/vm/stop"
     KVM_REBOOT_VM_PATH = "/vm/reboot"
     KVM_DESTROY_VM_PATH = "/vm/destroy"
+    KVM_CHANGE_CPUMEM_PATH = "/vm/changecpumem"
     KVM_GET_CONSOLE_PORT_PATH = "/vm/getvncport"
     KVM_VM_SYNC_PATH = "/vm/vmsync"
     KVM_ATTACH_VOLUME = "/vm/attachdatavolume"
@@ -2257,6 +2293,24 @@ class VmPlugin(kvmagent.KvmAgent):
         # rsp.states = running_vms
         rsp.states = get_all_vm_states()
         return jsonobject.dumps(rsp)
+    @kvmagent.replyerror
+    def change_cpumem(self, req):
+        cmd = jsonobject.loads(req[http.REQUEST_BODY])
+        rsp = ChangeCpuMemResponse()
+        try:
+            vm = get_vm_by_uuid(cmd.vmUuid)
+            cpu_num = cmd.cpuNum
+            memory_size = cmd.memorySize
+            rsp.cpuNum = vm.hotplug_cpu(cpu_num)
+            rsp.memorySize = vm.hotplug_mem(memory_size)
+            logger.debug('successfully add cpu and memory on vm[uuid:%s]' % (cmd.uuid))
+        except kvmagent.KvmError as e:
+            logger.warn(linux.get_exception_stacktrace())
+            rsp.error = str(e)
+            rsp.success = False
+        return jsonobject.dumps(rsp)
+
+
 
     @kvmagent.replyerror
     def get_console_port(self, req):
@@ -2530,6 +2584,7 @@ class VmPlugin(kvmagent.KvmAgent):
         http_server.register_async_uri(self.KVM_REBOOT_VM_PATH, self.reboot_vm)
         http_server.register_async_uri(self.KVM_DESTROY_VM_PATH, self.destroy_vm)
         http_server.register_async_uri(self.KVM_GET_CONSOLE_PORT_PATH, self.get_console_port)
+        http_server.register_async_uri(self.KVM_CHANGE_CPUMEM_PATH,self.change_cpumem)
         http_server.register_async_uri(self.KVM_VM_SYNC_PATH, self.vm_sync)
         http_server.register_async_uri(self.KVM_ATTACH_VOLUME, self.attach_data_volume)
         http_server.register_async_uri(self.KVM_DETACH_VOLUME, self.detach_data_volume)
