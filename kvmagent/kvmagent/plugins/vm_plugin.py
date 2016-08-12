@@ -1788,15 +1788,15 @@ class Vm(object):
                 cpu = e(root, 'cpu')
 
             #e(cpu, 'topology', attrib={'sockets': str(cmd.socketNum), 'cores': str(cmd.cpuOnSocket), 'threads': '1'})
-                e(cpu, 'topology', attrib={'sockets': str(32), 'cores': 32, 'threads': '1'})
+                e(cpu, 'topology', attrib={'sockets': str(32), 'cores': str(32), 'threads': '1'})
                 numa = e(cpu, 'numa')
-                e(numa, 'cell', attrib={'id': '0', 'cpus':'0-127', 'memory': '1048576', 'unit':'KiB'})
+                e(numa, 'cell', attrib={'id': '0', 'cpus':'0-127', 'memory': str(1048576), 'unit':'KiB'})
 
 
         def make_memory():
             root = elements['root']
             mem = cmd.memory / 1024
-            e(root, 'maxMemory',str(104857600),{'slots':'32', 'unit':'KiB'})
+            e(root, 'maxMemory',str(104857600),{'slots':str(32), 'unit':'KiB'})
             e(root, 'memory', str(mem), {'unit':'k'})
             e(root, 'currentMemory', str(mem), {'unit':'k'})
 
