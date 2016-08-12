@@ -838,7 +838,7 @@ class Vm(object):
         return self.state == state
 
     def get_cpu_num(self):
-        return int(self.domain_xmlobject.vcpu.text_)
+        return int(self.domain_xmlobject.vcpu.get('current'))
 
     def get_cpu_speed(self):
         cputune = self.domain_xmlobject.get_child_node('cputune')
@@ -1617,24 +1617,26 @@ class Vm(object):
                             self.uuid)
     def hotplug_mem(self, memory_size):
 
-        mem_size = memory_size - self.get_memory()
+        mem_size = (memory_size - self.get_memory()) / 1024
         xml = "<memory model='dimm'><target><size unit='KiB'>%d</size><node>0</node></target></memory>"%mem_size
-        logger.debug('hot plug memory:\n %d KiB' % mem_size)
+        logger.debug('hot plug memory: %d KiB' % mem_size)
         try:
             self.domain.attachDeviceFlags(xml,libvirt.VIR_DOMAIN_AFFECT_LIVE|libvirt.VIR_DOMAIN_AFFECT_CONFIG)
         except libvirt.libvirtError as ex:
             err = str(ex)
             logger.warn('unable to hotplug memory in vm[uuid:%s], %s' % (self.uuid, err))
+            raise kvmagent.KvmError(err)
         return self.get_memory()
 
     def hotplug_cpu(self, cpu_num):
 
-        logger.debug('set cpu:\n %d cpu' % cpu_num)
+        logger.debug('set cpus: %d cpus' % cpu_num)
         try:
             self.domain.setVcpusFlags(cpu_num,libvirt.VIR_DOMAIN_AFFECT_LIVE|libvirt.VIR_DOMAIN_AFFECT_CONFIG)
         except libvirt.libvirtError as ex:
             err = str(ex)
-            logger.warn('unable to hotplug cpu in vm[uuid:%s], %s' %(self.uuid, err))
+            logger.warn('unable to set cpus in vm[uuid:%s], %s' %(self.uuid, err))
+            raise kvmagent.KvmError(err)
         return self.get_cpu_num()
 
     @linux.retry(times=3, sleep_time=5)
@@ -2301,8 +2303,8 @@ class VmPlugin(kvmagent.KvmAgent):
             vm = get_vm_by_uuid(cmd.vmUuid)
             cpu_num = cmd.cpuNum
             memory_size = cmd.memorySize
-            rsp.cpuNum = vm.hotplug_cpu(cpu_num)
             rsp.memorySize = vm.hotplug_mem(memory_size)
+            rsp.cpuNum = vm.hotplug_cpu(cpu_num)
             logger.debug('successfully add cpu and memory on vm[uuid:%s]' % (cmd.uuid))
         except kvmagent.KvmError as e:
             logger.warn(linux.get_exception_stacktrace())
