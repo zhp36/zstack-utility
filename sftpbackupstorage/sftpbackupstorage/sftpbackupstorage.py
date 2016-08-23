@@ -17,6 +17,7 @@ import pprint
 import os.path
 import os
 import shutil
+import stat
 
 logger = log.get_logger(__name__)
 
@@ -226,13 +227,12 @@ class SftpBackupStorageAgent(object):
             rsp.success = False
             rsp.error = 'unsupported url scheme[%s], SimpleSftpBackupStorage only supports %s' % (cmd.urlScheme, supported_schemes)
             return jsonobject.dumps(rsp)
-        
+
         path = os.path.dirname(cmd.installPath)
         if not os.path.exists(path):
             os.makedirs(path, 0777)
         image_name = os.path.basename(cmd.installPath)
         install_path = cmd.installPath
-        
         timeout = cmd.timeout if cmd.timeout else 7200
         if cmd.urlScheme in [self.URL_HTTP, self.URL_HTTPS]:
             try:
@@ -253,7 +253,7 @@ class SftpBackupStorageAgent(object):
                 raise Exception('cannot find the file[%s]' % src_path)
 
             shell.call('yes | cp %s %s' % (src_path, install_path))
-
+        os.chmod(cmd.installPath, stat.S_IRWXU + stat.S_IRGRP + stat.S_IROTH)
         size = os.path.getsize(install_path)
         image_format =  bash_o("qemu-img info %s | grep -w '^file format' | awk '{print $3}'" % install_path).strip('\n')
         if "raw" in image_format:
