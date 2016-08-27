@@ -253,7 +253,7 @@ class SftpBackupStorageAgent(object):
                 raise Exception('cannot find the file[%s]' % src_path)
 
             shell.call('yes | cp %s %s' % (src_path, install_path))
-        os.chmod(cmd.installPath, stat.S_IRWXU + stat.S_IRGRP + stat.S_IROTH)
+        os.chmod(cmd.installPath, stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
         size = os.path.getsize(install_path)
         image_format =  bash_o("qemu-img info %s | grep -w '^file format' | awk '{print $3}'" % install_path).strip('\n')
         if "raw" in image_format:
