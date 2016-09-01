@@ -2024,6 +2024,18 @@ class DeleteVmStaticIpAction(inventory.APIDeleteVmStaticIpMsg):
         self.out = evt
         return self.out
 
+class CreateVmInstanceAction(inventory.APICreateVmInstanceMsg):
+    def __init__(self):
+        super(CreateVmInstanceAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[CreateVmInstanceAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
 class QueryVmNicAction(inventory.APIQueryVmNicMsg):
     def __init__(self):
         super(QueryVmNicAction, self).__init__()
@@ -2084,18 +2096,6 @@ class StartVmInstanceAction(inventory.APIStartVmInstanceMsg):
     def run(self):
         if not self.sessionUuid:
             raise Exception('sessionUuid of action[StartVmInstanceAction] cannot be None')
-        evt = api.async_call(self, self.sessionUuid)
-        self.out = evt
-        return self.out
-
-class CreateVmInstanceAction(inventory.APICreateVmInstanceMsg):
-    def __init__(self):
-        super(CreateVmInstanceAction, self).__init__()
-        self.sessionUuid = None
-        self.out = None
-    def run(self):
-        if not self.sessionUuid:
-            raise Exception('sessionUuid of action[CreateVmInstanceAction] cannot be None')
         evt = api.async_call(self, self.sessionUuid)
         self.out = evt
         return self.out
@@ -3744,18 +3744,6 @@ class DeleteLoadBalancerAction(inventory.APIDeleteLoadBalancerMsg):
         self.out = evt
         return self.out
 
-class RefreshLoadBalancerAction(inventory.APIRefreshLoadBalancerMsg):
-    def __init__(self):
-        super(RefreshLoadBalancerAction, self).__init__()
-        self.sessionUuid = None
-        self.out = None
-    def run(self):
-        if not self.sessionUuid:
-            raise Exception('sessionUuid of action[RefreshLoadBalancerAction] cannot be None')
-        evt = api.async_call(self, self.sessionUuid)
-        self.out = evt
-        return self.out
-
 class QueryLoadBalancerAction(inventory.APIQueryLoadBalancerMsg):
     def __init__(self):
         super(QueryLoadBalancerAction, self).__init__()
@@ -3768,6 +3756,18 @@ class QueryLoadBalancerAction(inventory.APIQueryLoadBalancerMsg):
         reply = api.sync_call(self, self.sessionUuid)
         self.reply = reply
         self.out = reply.inventories
+        return self.out
+
+class RefreshLoadBalancerAction(inventory.APIRefreshLoadBalancerMsg):
+    def __init__(self):
+        super(RefreshLoadBalancerAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[RefreshLoadBalancerAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
         return self.out
 
 class ChangeSecurityGroupStateAction(inventory.APIChangeSecurityGroupStateMsg):
