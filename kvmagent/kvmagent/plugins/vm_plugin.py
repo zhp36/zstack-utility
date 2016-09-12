@@ -2347,12 +2347,17 @@ class VmPlugin(kvmagent.KvmAgent):
     def _stop_vm(self, cmd):
         try:
             vm = get_vm_by_uuid(cmd.uuid)
+            force = cmd.force
         except kvmagent.KvmError as e:
             logger.debug(linux.get_exception_stacktrace())
             logger.debug('however, the stop operation is still considered as success')
             return
-
-        vm.stop(timeout=cmd.timeout / 2)
+        logger.debug("luchukun*************===%s"%force)
+        if str(force) == "false" :
+            logger.debug("luchukun*************forcelyy stop mv@@@@@@@@@@@@@@@22" % force)
+            vm.stop(timeout=cmd.timeout / 2)
+        else:
+            vm.stop(timeout=cmd.timeout / 2,graceful=False)
 
     @kvmagent.replyerror
     def stop_vm(self, req):
