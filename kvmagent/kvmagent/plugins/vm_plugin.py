@@ -1831,6 +1831,9 @@ class Vm(object):
                 e(root, 'maxMemory',str(104857600),{'slots':str(16), 'unit':'KiB'})
                 #e(root,'memory',str(mem),{'unit':'k'})
                 e(root, 'currentMemory', str(mem), {'unit':'k'})
+            else:
+                e(root,'memory',str(mem),{'unit':'k'})
+                e(root, 'currentMemory', str(mem), {'unit': 'k'})
 
         def make_os():
             root = elements['root']
