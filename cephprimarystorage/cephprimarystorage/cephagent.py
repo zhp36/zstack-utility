@@ -65,7 +65,7 @@ class GetFactsRsp(AgentResponse):
     def __init__(self):
         super(GetFactsRsp, self).__init__()
         self.fsid = None
-        self.dataNetworkIp = None
+        self.monAddr = None
 
 def replyerror(func):
     @functools.wraps(func)
@@ -195,11 +195,11 @@ class CephAgent(object):
         for mon in mon_facts.monmap.mons:
             ADDR = mon.addr.split(':')[0]
             if bash_r('ip route | grep -w {{ADDR}} > /dev/null') == 0:
-                rsp.dataNetworkIp = ADDR
+                rsp.monAddr = ADDR
                 break
 
-        if not rsp.dataNetworkIp:
-            raise Exception('cannot find data network IP of the mon server[%s]' % cmd.monUuid)
+        if not rsp.monAddr:
+            raise Exception('cannot find mon address of the mon server[%s]' % cmd.monUuid)
 
         rsp.fsid = fsid
         return jsonobject.dumps(rsp)
