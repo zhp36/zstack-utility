@@ -147,8 +147,8 @@ class CephAgent(object):
         facts = bash_o('ceph -s -f json')
         mon_facts = jsonobject.loads(facts)
         for mon in mon_facts.monmap.mons:
-            ADDR = mon.addr
-            if bash_r('ip route | grep -v {{ADDR}} > /dev/null') == 0:
+            ADDR = mon.addr.split(':')[0]
+            if bash_r('ip route | grep -w {{ADDR}} > /dev/null') == 0:
                 rsp.dataNetworkIp = ADDR
                 break
 
