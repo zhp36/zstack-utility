@@ -1622,6 +1622,8 @@ class Vm(object):
     def hotplug_mem(self, memory_size):
 
         mem_size = (memory_size - self.get_memory()) / 1024
+        if mem_size == 0:
+            return
         xml = "<memory model='dimm'><target><size unit='KiB'>%d</size><node>0</node></target></memory>"%mem_size
         logger.debug('hot plug memory: %d KiB' % mem_size)
         try:
@@ -1802,7 +1804,7 @@ class Vm(object):
                     cpu = e(root, 'cpu')
                 #e(cpu, 'topology', attrib={'sockets': str(cmd.socketNum), 'cores': str(cmd.cpuOnSocket), 'threads': '1'})
                 mem = cmd.memory / 1024
-                e(cpu, 'topology', attrib={'sockets': str(32), 'cores': str(32), 'threads': '1'})
+                e(cpu, 'topology', attrib={'sockets': str(8), 'cores': str(16), 'threads': '1'})
                 numa = e(cpu, 'numa')
                 e(numa, 'cell', attrib={'id': '0', 'cpus':'0-127', 'memory': str(mem), 'unit':'KiB'})
             else:
