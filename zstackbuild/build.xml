@@ -241,6 +241,9 @@
             <sequential>
                 <antcall target="build-fusionstorp"/>
             </sequential>
+            <sequential>
+                <antcall target="build-zstack-vyos"/>
+            </sequential>
         </parallel>
     </target>
 
@@ -302,6 +305,9 @@
             </sequential>
             <sequential>
                 <antcall target="assemble-fusionstorp"/>
+            </sequential>
+            <sequential>
+                <antcall target="assemble-zstack-vyos"/>
             </sequential>
         </parallel>
 
