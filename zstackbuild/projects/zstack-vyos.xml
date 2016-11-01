@@ -4,7 +4,7 @@
     <property name="vyos.bdir" location="${build.dir}/vyos" />
     <property name="vyos.ansible.dir" location="${ansible.dir}/vyos/" />
 
-    <target name="build-zstack-vyos" if="build_war_flag">
+    <target name="build-zstack-vyos">
         <makeDir dir="${vyos.bdir}" />
 
         <checkProperty property="vyos.source" />
@@ -28,7 +28,7 @@
         </copy>
     </target>
 
-    <target name="assemble-zstack-vyos" if="build_war_flag">
+    <target name="assemble-zstack-vyos">
         <copy todir="${vyos.ansible.dir}">
             <fileset dir="${vyos.bdir}">
                 <include name="**/*" />
