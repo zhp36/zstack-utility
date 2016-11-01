@@ -24,7 +24,6 @@
             <fileset dir="${vyos.source}/target/">
                 <include name="zvr.bin" />
                 <include name="zvrboot.bin" />
-                <include name="zvr.py" />
             </fileset>
         </copy>
     </target>
