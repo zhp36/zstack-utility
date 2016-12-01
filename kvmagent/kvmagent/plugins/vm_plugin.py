@@ -644,8 +644,6 @@ class IsoBoss(object):
     def to_xmlobject(self):
         disk = etree.Element('disk', {'type': 'network', 'device': 'cdrom'})
         source = e(disk, 'source', None, {'name': self.iso.path.lstrip('boss:').lstrip('//'), 'protocol': 'boss'})
-        for minfo in self.iso.monInfo:
-            e(source, 'host', None, {'name': minfo.hostname, 'port': str(minfo.port)})
         e(disk, 'target', None, {'dev': 'hdc', 'bus': 'ide'})
         e(disk, 'readonly', None)
         return disk
@@ -659,8 +657,6 @@ class IdeBoss(object):
         disk = etree.Element('disk', {'type': 'network', 'device': 'disk'})
         source = e(disk, 'source', None,
                    {'name': self.volume.installPath.lstrip('boss:').lstrip('//'), 'protocol': 'boss'})
-        for minfo in self.volume.monInfo:
-            e(source, 'host', None, {'name': minfo.hostname, 'port': str(minfo.port)})
         e(disk, 'target', None, {'dev': 'hd%s' % self.dev_letter, 'bus': 'ide'})
         return disk
 
@@ -673,8 +669,6 @@ class VirtioBoss(object):
         disk = etree.Element('disk', {'type': 'network', 'device': 'disk'})
         source = e(disk, 'source', None,
                    {'name': self.volume.installPath.lstrip('boss:').lstrip('//'), 'protocol': 'boss'})
-        for minfo in self.volume.monInfo:
-            e(source, 'host', None, {'name': minfo.hostname, 'port': str(minfo.port)})
         e(disk, 'target', None, {'dev': 'vd%s' % self.dev_letter, 'bus': 'virtio'})
         return disk
 
@@ -687,8 +681,6 @@ class VirtioSCSIBoss(object):
         disk = etree.Element('disk', {'type': 'network', 'device': 'disk'})
         source = e(disk, 'source', None,
                    {'name': self.volume.installPath.lstrip('boss:').lstrip('//'), 'protocol': 'boss'})
-        for minfo in self.volume.monInfo:
-            e(source, 'host', None, {'name': minfo.hostname, 'port': str(minfo.port)})
         e(disk, 'target', None, {'dev': 'sd%s' % self.dev_letter, 'bus': 'scsi'})
         e(disk, 'wwn', self.volume.wwn)
         e(disk, 'shareable')
