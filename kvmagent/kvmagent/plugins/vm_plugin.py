@@ -637,6 +637,62 @@ class VirtioSCSICeph(object):
         e(disk, 'shareable')
         return disk
 
+class IsoBoss(object):
+    def __init__(self):
+        self.iso = None
+
+    def to_xmlobject(self):
+        disk = etree.Element('disk', {'type': 'network', 'device': 'cdrom'})
+        source = e(disk, 'source', None, {'name': self.iso.path.lstrip('boss:').lstrip('//'), 'protocol': 'boss'})
+        for minfo in self.iso.monInfo:
+            e(source, 'host', None, {'name': minfo.hostname, 'port': str(minfo.port)})
+        e(disk, 'target', None, {'dev': 'hdc', 'bus': 'ide'})
+        e(disk, 'readonly', None)
+        return disk
+
+class IdeBoss(object):
+    def __init__(self):
+        self.volume = None
+        self.dev_letter = None
+
+    def to_xmlobject(self):
+        disk = etree.Element('disk', {'type': 'network', 'device': 'disk'})
+        source = e(disk, 'source', None,
+                   {'name': self.volume.installPath.lstrip('boss:').lstrip('//'), 'protocol': 'boss'})
+        for minfo in self.volume.monInfo:
+            e(source, 'host', None, {'name': minfo.hostname, 'port': str(minfo.port)})
+        e(disk, 'target', None, {'dev': 'hd%s' % self.dev_letter, 'bus': 'ide'})
+        return disk
+
+class VirtioBoss(object):
+    def __init__(self):
+        self.volume = None
+        self.dev_letter = None
+
+    def to_xmlobject(self):
+        disk = etree.Element('disk', {'type': 'network', 'device': 'disk'})
+        source = e(disk, 'source', None,
+                   {'name': self.volume.installPath.lstrip('boss:').lstrip('//'), 'protocol': 'boss'})
+        for minfo in self.volume.monInfo:
+            e(source, 'host', None, {'name': minfo.hostname, 'port': str(minfo.port)})
+        e(disk, 'target', None, {'dev': 'vd%s' % self.dev_letter, 'bus': 'virtio'})
+        return disk
+
+class VirtioSCSIBoss(object):
+    def __init__(self):
+        self.volume = None
+        self.dev_letter = None
+
+    def to_xmlobject(self):
+        disk = etree.Element('disk', {'type': 'network', 'device': 'disk'})
+        source = e(disk, 'source', None,
+                   {'name': self.volume.installPath.lstrip('boss:').lstrip('//'), 'protocol': 'boss'})
+        for minfo in self.volume.monInfo:
+            e(source, 'host', None, {'name': minfo.hostname, 'port': str(minfo.port)})
+        e(disk, 'target', None, {'dev': 'sd%s' % self.dev_letter, 'bus': 'scsi'})
+        e(disk, 'wwn', self.volume.wwn)
+        e(disk, 'shareable')
+        return disk
 
 class IsoFusionstor(object):
     def __init__(self):
@@ -1343,6 +1399,39 @@ class Vm(object):
                 else:
                     return blk_ceph()
 
+        def boss_volume():
+            def virtoio_boss():
+                vc = VirtioBoss()
+                vc.volume = volume
+                vc.dev_letter = self.DEVICE_LETTERS[volume.deviceId]
+                xml_obj = vc.to_xmlobject()
+                volume_qos(xml_obj)
+                return etree.tostring(xml_obj)
+
+            def blk_boss():
+                ic = IdeBoss()
+                ic.volume = volume
+                ic.dev_letter = self.DEVICE_LETTERS[volume.deviceId]
+                xml_obj = ic.to_xmlobject()
+                volume_qos(xml_obj)
+                return etree.tostring(xml_obj)
+
+            def virtio_scsi_boss():
+                sc = VirtioSCSIBoss()
+                sc.volume = volume
+                sc.dev_letter = self.DEVICE_LETTERS[volume.deviceId]
+                xml_obj = sc.to_xmlobject()
+                volume_qos(xml_obj)
+                return etree.tostring(xml_obj)
+
+            if volume.useVirtioSCSI:
+                return virtio_scsi_boss()
+            else:
+                if volume.useVirtio:
+                    return virtoio_boss()
+                else:
+                    return blk_boss()
+
         def fusionstor_volume():
             def virtoio_fusionstor():
                 vc = VirtioFusionstor()
@@ -1380,6 +1469,8 @@ class Vm(object):
             xml = filebased_volume()
         elif volume.deviceType == 'ceph':
             xml = ceph_volume()
+        elif volume.deviceType == 'boss':
+            xml = boss_volume()
         elif volume.deviceType == 'fusionstor':
             xml = fusionstor_volume()
         else:
@@ -1407,6 +1498,10 @@ class Vm(object):
                                                      'source') and disk.source.file__ and disk.source.file_ == volume.installPath:
                                 return True
                         elif volume.deviceType == 'ceph':
+                            if xmlobject.has_element(disk,
+                                                     'source') and disk.source.name__ and disk.source.name_ in volume.installPath:
+                                return True
+                        elif volume.deviceType == 'boss':
                             if xmlobject.has_element(disk,
                                                      'source') and disk.source.name__ and disk.source.name_ in volume.installPath:
                                 return True
@@ -1454,7 +1549,7 @@ class Vm(object):
         def get_disk_name():
             if volume.deviceType == 'iscsi':
                 fmt = 'sd%s'
-            elif volume.deviceType in ['file', 'ceph', 'fusionstor']:
+            elif volume.deviceType in ['file', 'ceph', 'boss', 'fusionstor']:
                 if volume.useVirtioSCSI:
                     fmt = 'sd%s'
                 else:
@@ -1505,6 +1600,12 @@ class Vm(object):
                                         'volume[%s] is still in process of detaching, wait for it' % volume.installPath)
                                     return False
                         elif volume.deviceType == 'ceph':
+                            if xmlobject.has_element(disk,
+                                                     'source') and disk.source.name__ and disk.source.name_ in volume.installPath:
+                                logger.debug(
+                                    'volume[%s] is still in process of detaching, wait for it' % volume.installPath)
+                                return False
+                        elif volume.deviceType == 'boss':
                             if xmlobject.has_element(disk,
                                                      'source') and disk.source.name__ and disk.source.name_ in volume.installPath:
                                 logger.debug(
@@ -1804,6 +1905,10 @@ class Vm(object):
             cdrom = bi.to_xmlobject()
         elif iso.path.startswith('ceph'):
             ic = IsoCeph()
+            ic.iso = iso
+            cdrom = ic.to_xmlobject()
+        elif iso.path.startswith('boss'):
+            ic = IsoBoss()
             ic.iso = iso
             cdrom = ic.to_xmlobject()
         elif iso.path.startswith('fusionstor'):
@@ -2222,6 +2327,10 @@ class Vm(object):
                 ic = IsoCeph()
                 ic.iso = iso
                 devices.append(ic.to_xmlobject())
+            elif iso.path.startswith('boss'):
+                ic = IsoBoss()
+                ic.iso = iso
+                devices.append(ic.to_xmlobject())
             elif iso.path.startswith('fusionstor'):
                 ic = IsoFusionstor()
                 ic.iso = iso
@@ -2300,6 +2409,24 @@ class Vm(object):
                 else:
                     return ceph_blk()
 
+            def boss_volume(dev_letter, virtio):
+                def boss_virtio():
+                    vc = VirtioBoss()
+                    vc.volume = v
+                    vc.dev_letter = dev_letter
+                    return vc.to_xmlobject()
+
+                def boss_blk():
+                    ic = IdeBoss()
+                    ic.volume = v
+                    ic.dev_letter = dev_letter
+                    return ic.to_xmlobject()
+
+                if virtio:
+                    return boss_virtio()
+                else:
+                    return boss_blk()
+
             def fusionstor_volume(dev_letter, virtio):
                 def fusionstor_virtio():
                     vc = VirtioFusionstor()
@@ -2357,6 +2484,8 @@ class Vm(object):
                     vol = iscsibased_volume(dev_letter, v.useVirtio)
                 elif v.deviceType == 'ceph':
                     vol = ceph_volume(dev_letter, v.useVirtio)
+                elif v.deviceType == 'boss':
+                    vol = boss_volume(dev_letter, v.useVirtio)
                 elif v.deviceType == 'fusionstor':
                     vol = fusionstor_volume(dev_letter, v.useVirtio)
                 else:
