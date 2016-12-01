@@ -43,3 +43,6 @@ zstackbuild/scripts/setup.sh
 *.orig
 .pydevproject
 .project
+
+#mac
+.DS_Store
