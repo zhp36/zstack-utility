@@ -94,7 +94,7 @@ class HostPlugin(kvmagent.KvmAgent):
         words = ret.split()
         for w in words:
             if w == 'version':
-                return words[words.index(w)+1].strip()
+                return words[words.index(w)+1].strip('\t\r\n ,')
 
         raise kvmagent.KvmError('cannot get qemu version[%s]' % ret)
 
