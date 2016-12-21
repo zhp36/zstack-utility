@@ -39,6 +39,7 @@ class HostFactResponse(kvmagent.AgentResponse):
         self.qemuImgVersion = None
         self.libvirtVersion = None
         self.hvmCpuFlag = None
+        self.ips = []
 
 class SetupMountablePrimaryStorageHeartbeatCmd(kvmagent.AgentCommand):
     def __init__(self):
@@ -165,6 +166,11 @@ class HostPlugin(kvmagent.KvmAgent):
             cmd(False)
             if cmd.return_code == 0:
                 rsp.hvmCpuFlag = 'svm'
+
+        eths = linux.get_ethernet_info()
+        for eth in eths:
+            if eth.ip and not eth.ip.startswith("127."):
+                rsp.ips.append(eth.ip)
 
         return jsonobject.dumps(rsp)
         
