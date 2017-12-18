@@ -794,6 +794,18 @@ class BackupVolumeSnapshotAction(inventory.APIBackupVolumeSnapshotMsg):
         self.out = evt
         return self.out
 
+class BatchQueryAction(inventory.APIBatchQueryMsg):
+    def __init__(self):
+        super(BatchQueryAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[BatchQueryAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
 class CalculateAccountSpendingAction(inventory.APICalculateAccountSpendingMsg):
     def __init__(self):
         super(CalculateAccountSpendingAction, self).__init__()
@@ -4010,6 +4022,18 @@ class GetDataVolumeAttachableVmAction(inventory.APIGetDataVolumeAttachableVmMsg)
         self.out = evt
         return self.out
 
+class GetEcsAllMetricsLastAction(inventory.APIGetEcsAllMetricsLastMsg):
+    def __init__(self):
+        super(GetEcsAllMetricsLastAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[GetEcsAllMetricsLastAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
 class GetEcsInstanceTypeAction(inventory.APIGetEcsInstanceTypeMsg):
     def __init__(self):
         super(GetEcsInstanceTypeAction, self).__init__()
@@ -4030,6 +4054,18 @@ class GetEcsInstanceVncUrlAction(inventory.APIGetEcsInstanceVncUrlMsg):
     def run(self):
         if not self.sessionUuid:
             raise Exception('sessionUuid of action[GetEcsInstanceVncUrlAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
+class GetEcsMetricsDetailsAction(inventory.APIGetEcsMetricsDetailsMsg):
+    def __init__(self):
+        super(GetEcsMetricsDetailsAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[GetEcsMetricsDetailsAction] cannot be None')
         evt = api.async_call(self, self.sessionUuid)
         self.out = evt
         return self.out
@@ -4258,6 +4294,18 @@ class GetL3NetworkTypesAction(inventory.APIGetL3NetworkTypesMsg):
     def run(self):
         if not self.sessionUuid:
             raise Exception('sessionUuid of action[GetL3NetworkTypesAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
+class GetLastAllEcsMetricsAction(inventory.APIGetLastAllEcsMetricsMsg):
+    def __init__(self):
+        super(GetLastAllEcsMetricsAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[GetLastAllEcsMetricsAction] cannot be None')
         evt = api.async_call(self, self.sessionUuid)
         self.out = evt
         return self.out

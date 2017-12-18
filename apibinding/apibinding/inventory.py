@@ -1088,6 +1088,76 @@ class APIUpdateEcsImageMsg(object):
         self.userTags = OptionalList()
 
 
+APIGETECSALLMETRICSLASTMSG_FULL_NAME = 'org.zstack.header.aliyun.monitor.APIGetEcsAllMetricsLastMsg'
+class APIGetEcsAllMetricsLastMsg(object):
+    FULL_NAME='org.zstack.header.aliyun.monitor.APIGetEcsAllMetricsLastMsg'
+    def __init__(self):
+        #mandatory field
+        self.ecsUuid = NotNoneField()
+        self.session = None
+        self.timeout = None
+        self.systemTags = OptionalList()
+        self.userTags = OptionalList()
+
+
+APIGETECSALLMETRICSLASTREPLY_FULL_NAME = 'org.zstack.header.aliyun.monitor.APIGetEcsAllMetricsLastReply'
+class APIGetEcsAllMetricsLastReply(object):
+    FULL_NAME='org.zstack.header.aliyun.monitor.APIGetEcsAllMetricsLastReply'
+    def __init__(self):
+        self.inventories = OptionalList()
+        self.success = None
+        self.error = None
+
+
+APIGETECSMETRICSDETAILSMSG_FULL_NAME = 'org.zstack.header.aliyun.monitor.APIGetEcsMetricsDetailsMsg'
+class APIGetEcsMetricsDetailsMsg(object):
+    FULL_NAME='org.zstack.header.aliyun.monitor.APIGetEcsMetricsDetailsMsg'
+    def __init__(self):
+        #mandatory field
+        self.ecsUuid = NotNoneField()
+        #mandatory field
+        self.metrics = NotNoneField()
+        self.startTime = None
+        #valid values: [days, hours, minutes]
+        self.startTimeUnit = None
+        self.session = None
+        self.timeout = None
+        self.systemTags = OptionalList()
+        self.userTags = OptionalList()
+
+
+APIGETECSMETRICSDETAILSREPLY_FULL_NAME = 'org.zstack.header.aliyun.monitor.APIGetEcsMetricsDetailsReply'
+class APIGetEcsMetricsDetailsReply(object):
+    FULL_NAME='org.zstack.header.aliyun.monitor.APIGetEcsMetricsDetailsReply'
+    def __init__(self):
+        self.inventories = OptionalList()
+        self.success = None
+        self.error = None
+
+
+APIGETLASTALLECSMETRICSMSG_FULL_NAME = 'org.zstack.header.aliyun.monitor.APIGetLastAllEcsMetricsMsg'
+class APIGetLastAllEcsMetricsMsg(object):
+    FULL_NAME='org.zstack.header.aliyun.monitor.APIGetLastAllEcsMetricsMsg'
+    def __init__(self):
+        #mandatory field
+        self.vpcUuid = NotNoneField()
+        #mandatory field
+        self.metrics = NotNoneField()
+        self.session = None
+        self.timeout = None
+        self.systemTags = OptionalList()
+        self.userTags = OptionalList()
+
+
+APIGETLASTALLECSMETRICSREPLY_FULL_NAME = 'org.zstack.header.aliyun.monitor.APIGetLastAllEcsMetricsReply'
+class APIGetLastAllEcsMetricsReply(object):
+    FULL_NAME='org.zstack.header.aliyun.monitor.APIGetLastAllEcsMetricsReply'
+    def __init__(self):
+        self.inventories = OptionalList()
+        self.success = None
+        self.error = None
+
+
 APIADDCONNECTIONACCESSPOINTFROMREMOTEMSG_FULL_NAME = 'org.zstack.header.aliyun.network.connection.APIAddConnectionAccessPointFromRemoteMsg'
 class APIAddConnectionAccessPointFromRemoteMsg(object):
     FULL_NAME='org.zstack.header.aliyun.network.connection.APIAddConnectionAccessPointFromRemoteMsg'
@@ -11809,6 +11879,26 @@ class APIPrometheusQueryVmMonitoringDataReply(object):
         self.error = None
 
 
+APIBATCHQUERYMSG_FULL_NAME = 'org.zstack.query.APIBatchQueryMsg'
+class APIBatchQueryMsg(object):
+    FULL_NAME='org.zstack.query.APIBatchQueryMsg'
+    def __init__(self):
+        self.script = None
+        self.session = None
+        self.timeout = None
+        self.systemTags = OptionalList()
+        self.userTags = OptionalList()
+
+
+APIBATCHQUERYREPLY_FULL_NAME = 'org.zstack.query.APIBatchQueryReply'
+class APIBatchQueryReply(object):
+    FULL_NAME='org.zstack.query.APIBatchQueryReply'
+    def __init__(self):
+        self.result = OptionalMap()
+        self.success = None
+        self.error = None
+
+
 APIADDSCHEDULERJOBTOSCHEDULERTRIGGERMSG_FULL_NAME = 'org.zstack.scheduler.APIAddSchedulerJobToSchedulerTriggerMsg'
 class APIAddSchedulerJobToSchedulerTriggerMsg(object):
     FULL_NAME='org.zstack.scheduler.APIAddSchedulerJobToSchedulerTriggerMsg'
@@ -13942,6 +14032,8 @@ api_names = [
     'APIBackupDatabaseToPublicCloudMsg',
     'APIBackupStorageMigrateImageMsg',
     'APIBackupVolumeSnapshotMsg',
+    'APIBatchQueryMsg',
+    'APIBatchQueryReply',
     'APICalculateAccountSpendingMsg',
     'APICalculateAccountSpendingReply',
     'APICancelLongJobMsg',
@@ -14238,10 +14330,14 @@ api_names = [
     'APIGetDataVolumeAttachableVmMsg',
     'APIGetDataVolumeAttachableVmReply',
     'APIGetDiskOfferingReply',
+    'APIGetEcsAllMetricsLastMsg',
+    'APIGetEcsAllMetricsLastReply',
     'APIGetEcsInstanceTypeMsg',
     'APIGetEcsInstanceTypeReply',
     'APIGetEcsInstanceVncUrlMsg',
     'APIGetEcsInstanceVncUrlReply',
+    'APIGetEcsMetricsDetailsMsg',
+    'APIGetEcsMetricsDetailsReply',
     'APIGetEipAttachableVmNicsMsg',
     'APIGetEipAttachableVmNicsReply',
     'APIGetFreeIpMsg',
@@ -14286,6 +14382,8 @@ api_names = [
     'APIGetL3NetworkRouterInterfaceIpReply',
     'APIGetL3NetworkTypesMsg',
     'APIGetL3NetworkTypesReply',
+    'APIGetLastAllEcsMetricsMsg',
+    'APIGetLastAllEcsMetricsReply',
     'APIGetLdapEntryMsg',
     'APIGetLdapEntryReply',
     'APIGetLicenseCapabilitiesMsg',
@@ -20454,52 +20552,52 @@ class VCenterPrimaryStorageInventory(PrimaryStorageInventory):
 
 
 
-class VpcConnectionEntry(object):
+class VpcConnectionTO(object):
     def __init__(self):
-        self.srcL2Type = None
-        self.dstL2Type = None
-        self.srcMac = None
-        self.dstMac = None
-        self.srcL2Vni = None
-        self.dstL2Vni = None
-        self.opDate = None
+        self.sourceL2NetworkType = None
+        self.destinationL2NetworkType = None
+        self.sourceMac = None
+        self.destinationMac = None
+        self.sourceL2NetworkVni = None
+        self.destinationL2NetworkVni = None
+        self.lastOpDate = None
         self.status = None
 
     def evaluate(self, inv):
-        if hasattr(inv, 'srcL2Type'):
-            self.srcL2Type = inv.srcL2Type
+        if hasattr(inv, 'sourceL2NetworkType'):
+            self.sourceL2NetworkType = inv.sourceL2NetworkType
         else:
-            self.srcL2Type = None
+            self.sourceL2NetworkType = None
 
-        if hasattr(inv, 'dstL2Type'):
-            self.dstL2Type = inv.dstL2Type
+        if hasattr(inv, 'destinationL2NetworkType'):
+            self.destinationL2NetworkType = inv.destinationL2NetworkType
         else:
-            self.dstL2Type = None
+            self.destinationL2NetworkType = None
 
-        if hasattr(inv, 'srcMac'):
-            self.srcMac = inv.srcMac
+        if hasattr(inv, 'sourceMac'):
+            self.sourceMac = inv.sourceMac
         else:
-            self.srcMac = None
+            self.sourceMac = None
 
-        if hasattr(inv, 'dstMac'):
-            self.dstMac = inv.dstMac
+        if hasattr(inv, 'destinationMac'):
+            self.destinationMac = inv.destinationMac
         else:
-            self.dstMac = None
+            self.destinationMac = None
 
-        if hasattr(inv, 'srcL2Vni'):
-            self.srcL2Vni = inv.srcL2Vni
+        if hasattr(inv, 'sourceL2NetworkVni'):
+            self.sourceL2NetworkVni = inv.sourceL2NetworkVni
         else:
-            self.srcL2Vni = None
+            self.sourceL2NetworkVni = None
 
-        if hasattr(inv, 'dstL2Vni'):
-            self.dstL2Vni = inv.dstL2Vni
+        if hasattr(inv, 'destinationL2NetworkVni'):
+            self.destinationL2NetworkVni = inv.destinationL2NetworkVni
         else:
-            self.dstL2Vni = None
+            self.destinationL2NetworkVni = None
 
-        if hasattr(inv, 'opDate'):
-            self.opDate = inv.opDate
+        if hasattr(inv, 'lastOpDate'):
+            self.lastOpDate = inv.lastOpDate
         else:
-            self.opDate = None
+            self.lastOpDate = None
 
         if hasattr(inv, 'status'):
             self.status = inv.status
@@ -20850,6 +20948,7 @@ PRIMARY_STORAGE_TYPE = 'ZSES'
 class GlobalConfig_ALIYUN(object):
     ALIYUN_OPENAPI_PAGE_SIZE = 'aliyun.openapi.page.size'
     UPLOAD_ECS_IMAGE_FORMAT = 'upload.ecs.image.format'
+    ALIYUN_CMS_OPENAPI_PAGE_SIZE = 'aliyun.cms.openapi.page.size'
 
     @staticmethod
     def get_category():
