@@ -397,7 +397,7 @@ cat > /etc/chrony/chrony.conf << EOF
 """ % "\n".join([ "server {} iburst".format(ip) for ip in chrony_servers.split(',')])
         host_post_info.post_label = "ansible.shell.deploy.chrony"
         host_post_info.post_label_param = None
-        run_remote_command(update_config_command)
+        run_remote_command(update_config_command, host_post_info)
 
         command = "systemctl disable ntpd; systemctl enable chronyd; systemctl start chronyd || true"
         host_post_info.post_label = "ansible.shell.enable.chronyd"
