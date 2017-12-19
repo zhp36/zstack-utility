@@ -391,15 +391,12 @@ run_remote_command(command, host_post_info)
 if chrony_servers is not None:
     if distro == "RedHat" or distro == "CentOS":
         yum_install_package("chrony", host_post_info)
-        update_config_command = """
-cat > /etc/chrony/chrony.conf << EOF
-%s
-""" % "\n".join([ "server {} iburst".format(ip) for ip in chrony_servers.split(',')])
-        host_post_info.post_label = "ansible.shell.deploy.chrony"
-        host_post_info.post_label_param = None
-        run_remote_command(update_config_command, host_post_info)
+        replace_content("/etc/chrony.conf", "regexp='^server ' replace='#server '", host_post_info)
+        for svr in chrony_servers.split(','):
+            update_file("/etc/chrony.conf", "regexp='#server %s' state=absent" % svr, host_post_info)
+            update_file("/etc/chrony.conf", "line='server %s iburst'" % svr, host_post_info)
 
-        command = "systemctl disable ntpd; systemctl enable chronyd; systemctl start chronyd || true"
+        command = "systemctl disable ntpd; systemctl enable chronyd; systemctl restart chronyd || true"
         host_post_info.post_label = "ansible.shell.enable.chronyd"
         host_post_info.post_label_param = None
         run_remote_command(command, host_post_info)
