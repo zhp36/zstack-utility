@@ -8596,6 +8596,18 @@ class UpdateVmInstanceAction(inventory.APIUpdateVmInstanceMsg):
         self.out = evt
         return self.out
 
+class UpdateVmMacAction(inventory.APIUpdateVmMacMsg):
+    def __init__(self):
+        super(UpdateVmMacAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[UpdateVmMacAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
 class UpdateVolumeAction(inventory.APIUpdateVolumeMsg):
     def __init__(self):
         super(UpdateVolumeAction, self).__init__()
