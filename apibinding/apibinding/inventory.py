@@ -8664,9 +8664,9 @@ class APIUpdateVmInstanceMsg(object):
         self.userTags = OptionalList()
 
 
-APIUPDATEVMMACMSG_FULL_NAME = 'org.zstack.header.vm.APIUpdateVmMacMsg'
-class APIUpdateVmMacMsg(object):
-    FULL_NAME='org.zstack.header.vm.APIUpdateVmMacMsg'
+APIUPDATEVMNICMACMSG_FULL_NAME = 'org.zstack.header.vm.APIUpdateVmNicMacMsg'
+class APIUpdateVmNicMacMsg(object):
+    FULL_NAME='org.zstack.header.vm.APIUpdateVmNicMacMsg'
     def __init__(self):
         #mandatory field
         self.vmNicUuid = NotNoneField()
@@ -14896,7 +14896,7 @@ api_names = [
     'APIUpdateVirtualBorderRouterRemoteMsg',
     'APIUpdateVirtualRouterOfferingMsg',
     'APIUpdateVmInstanceMsg',
-    'APIUpdateVmMacMsg',
+    'APIUpdateVmNicMacMsg',
     'APIUpdateVolumeMsg',
     'APIUpdateVolumeSnapshotMsg',
     'APIUpdateVpcUserVpnGatewayMsg',
@@ -15149,6 +15149,7 @@ class EcsInstanceInventory(object):
         self.ecsRootVolumeCategory = None
         self.ecsRootVolumeSize = None
         self.privateIpAddress = None
+        self.publicIpAddress = None
         self.ecsVSwitchUuid = None
         self.ecsImageUuid = None
         self.ecsSecurityGroupUuid = None
@@ -15229,6 +15230,11 @@ class EcsInstanceInventory(object):
             self.privateIpAddress = inv.privateIpAddress
         else:
             self.privateIpAddress = None
+
+        if hasattr(inv, 'publicIpAddress'):
+            self.publicIpAddress = inv.publicIpAddress
+        else:
+            self.publicIpAddress = None
 
         if hasattr(inv, 'ecsVSwitchUuid'):
             self.ecsVSwitchUuid = inv.ecsVSwitchUuid
@@ -21576,7 +21582,7 @@ class QueryObjectEcsImageUsageInventory(object):
      }
 
 class QueryObjectEcsInstanceInventory(object):
-     PRIMITIVE_FIELDS = ['ecsInstanceType','ecsImageUuid','ecsRootVolumeId','identityZoneUuid','chargeType','description','uuid','privateIpAddress','ecsInstanceId','memorySize','ecsStatus','cpuCores','ecsBandWidth','ecsRootVolumeSize','name','lastOpDate','localVmInstanceUuid','expireDate','ecsVSwitchUuid','ecsSecurityGroupUuid','ecsRootVolumeCategory','createDate','__userTag__','__systemTag__']
+     PRIMITIVE_FIELDS = ['ecsInstanceType','ecsImageUuid','publicIpAddress','ecsRootVolumeId','identityZoneUuid','chargeType','description','uuid','privateIpAddress','ecsInstanceId','memorySize','ecsStatus','cpuCores','ecsBandWidth','ecsRootVolumeSize','name','lastOpDate','localVmInstanceUuid','expireDate','ecsVSwitchUuid','ecsSecurityGroupUuid','ecsRootVolumeCategory','createDate','__userTag__','__systemTag__']
      EXPANDED_FIELDS = []
      QUERY_OBJECT_MAP = {
      }
