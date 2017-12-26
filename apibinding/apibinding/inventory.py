@@ -7615,8 +7615,7 @@ APIGETVIPQOSMSG_FULL_NAME = 'org.zstack.header.vipQos.APIGetVipQosMsg'
 class APIGetVipQosMsg(object):
     FULL_NAME='org.zstack.header.vipQos.APIGetVipQosMsg'
     def __init__(self):
-        #mandatory field
-        self.uuid = NotNoneField()
+        self.uuid = None
         self.session = None
         self.timeout = None
         self.systemTags = OptionalList()
