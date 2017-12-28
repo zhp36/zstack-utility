@@ -91,7 +91,6 @@ class HostPostInfo(object):
         self.host = None
         self.vip= None
         self.chrony_servers = None
-        self.disable_ntp = None
         self.post_url = ""
         self.start_time = None
         self.rabbit_password = None
