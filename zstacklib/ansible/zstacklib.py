@@ -82,6 +82,7 @@ class HostPostInfo(object):
         self.host = None
         self.vip= None
         self.chrony_servers = None
+        self.disable_ntp = None
         self.post_url = ""
         self.post_label = None
         self.post_label_param = None
@@ -1473,6 +1474,9 @@ def modprobe(modprobe_arg, host_post_info):
 
 
 def enable_ntp(trusted_host, host_post_info, distro):
+    if host_post_info.disable_ntp == 'true':
+        return
+
     logger.debug("Starting enable ntp service")
 
     def get_ha_mn_list(conf_file):
