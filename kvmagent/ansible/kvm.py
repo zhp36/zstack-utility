@@ -387,20 +387,6 @@ host_post_info.post_label = "ansible.shell.audit.signal"
 host_post_info.post_label_param = None
 run_remote_command(command, host_post_info)
 
-# name: update time syncing settings
-if chrony_servers is not None:
-    if distro == "RedHat" or distro == "CentOS":
-        yum_install_package("chrony", host_post_info)
-        replace_content("/etc/chrony.conf", "regexp='^server ' replace='#server '", host_post_info)
-        for svr in chrony_servers.split(','):
-            update_file("/etc/chrony.conf", "regexp='#server %s' state=absent" % svr, host_post_info)
-            update_file("/etc/chrony.conf", "line='server %s iburst'" % svr, host_post_info)
-
-        command = "systemctl disable ntpd; systemctl enable chronyd; systemctl restart chronyd || true"
-        host_post_info.post_label = "ansible.shell.enable.chronyd"
-        host_post_info.post_label_param = None
-        run_remote_command(command, host_post_info)
-
 # handlers
 if chroot_env == 'false':
     if distro == "RedHat" or distro == "CentOS":
