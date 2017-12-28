@@ -1014,6 +1014,17 @@ is_install_virtualenv(){
     pass
 }
 
+is_install_concurrentloghandler(){
+    echo_subtitle "Install ConcurrentLogHandler"
+    if [ ! -z $DEBUG ]; then
+        pip install -i $pypi_source_pip --trusted-host localhost --ignore-installed concurrentloghandler
+    else
+        pip install -i $pypi_source_pip --trusted-host localhost --ignore-installed concurrentloghandler >>$ZSTACK_INSTALL_LOG 2>&1
+    fi
+    [ $? -ne 0 ] && fail "install ConcurrentLogHandler failed"
+    pass
+}
+
 is_install_general_libs_deb(){
     echo_subtitle "Install General Libraries (takes a couple of minutes)"
     which mysql >/dev/null 2>&1
@@ -1102,6 +1113,7 @@ install_system_libs(){
     #mysql and rabbitmq will be installed by zstack-ctl later
     show_spinner ia_install_pip
     show_spinner is_install_virtualenv
+    show_spinner is_install_concurrentloghandler
     #enable ntpd
     show_spinner is_enable_ntpd
 }
@@ -1270,6 +1282,16 @@ uz_upgrade_zstack_ctl(){
     fi
 
     if [ ! -z $DEBUG ]; then
+        pip install -i "file://$upgrade_folder/zstack/static/pypi/simple" --trusted-host localhost --ignore-installed concurrentloghandler
+    else
+        pip install -i "file://$upgrade_folder/zstack/static/pypi/simple" --trusted-host localhost --ignore-installed concurrentloghandler >>$ZSTACK_INSTALL_LOG 2>&1
+    fi
+    if [ $? -ne 0 ];then
+        cd /; rm -rf $upgrade_folder
+        fail "failed to upgrade ConcurrentLogHandler"
+    fi
+
+    if [ ! -z $DEBUG ]; then
         bash zstack/WEB-INF/classes/tools/install.sh zstack-ctl 
     else
         bash zstack/WEB-INF/classes/tools/install.sh zstack-ctl >>$ZSTACK_INSTALL_LOG 2>&1
@@ -1278,6 +1300,7 @@ uz_upgrade_zstack_ctl(){
         cd /; rm -rf $upgrade_folder
         fail "failed to upgrade zstack-ctl"
     fi
+
     pass
 }
 
