@@ -1518,7 +1518,7 @@ def do_enable_ntp(trusted_host, host_post_info, distro):
     sync_date(distro)
 
 
-def do_deploy_chrony(host_post_info, svrs):
+def do_deploy_chrony(host_post_info, svrs, distro):
     if distro == "RedHat" or distro == "CentOS":
         yum_install_package("chrony", host_post_info)
         replace_content("/etc/chrony.conf", "regexp='^server ' replace='#server '", host_post_info)
@@ -1540,7 +1540,7 @@ def enable_ntp(trusted_host, host_post_info, distro):
     if host_post_info.host in svrs:
         return
 
-    do_deploy_chrony(host_post_info, svrs)
+    do_deploy_chrony(host_post_info, svrs, distro)
 
 class ZstackLib(object):
     def __init__(self, args):
