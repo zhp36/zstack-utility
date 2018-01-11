@@ -578,6 +578,18 @@ class AttachL2NetworkToClusterAction(inventory.APIAttachL2NetworkToClusterMsg):
         self.out = evt
         return self.out
 
+class AttachL3NetworkToIPsecConnectionAction(inventory.APIAttachL3NetworkToIPsecConnectionMsg):
+    def __init__(self):
+        super(AttachL3NetworkToIPsecConnectionAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[AttachL3NetworkToIPsecConnectionAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
 class AttachL3NetworkToVmAction(inventory.APIAttachL3NetworkToVmMsg):
     def __init__(self):
         super(AttachL3NetworkToVmAction, self).__init__()
@@ -706,6 +718,18 @@ class AttachPrimaryStorageToClusterAction(inventory.APIAttachPrimaryStorageToClu
     def run(self):
         if not self.sessionUuid:
             raise Exception('sessionUuid of action[AttachPrimaryStorageToClusterAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
+class AttachRemoteCIDRToIPsecConnectionAction(inventory.APIAttachRemoteCIDRToIPsecConnectionMsg):
+    def __init__(self):
+        super(AttachRemoteCIDRToIPsecConnectionAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[AttachRemoteCIDRToIPsecConnectionAction] cannot be None')
         evt = api.async_call(self, self.sessionUuid)
         self.out = evt
         return self.out
@@ -3410,6 +3434,18 @@ class DetachL2NetworkFromClusterAction(inventory.APIDetachL2NetworkFromClusterMs
         self.out = evt
         return self.out
 
+class DetachL3NetworkFromIPsecConnectionAction(inventory.APIDetachL3NetworkFromIPsecConnectionMsg):
+    def __init__(self):
+        super(DetachL3NetworkFromIPsecConnectionAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[DetachL3NetworkFromIPsecConnectionAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
 class DetachL3NetworkFromVmAction(inventory.APIDetachL3NetworkFromVmMsg):
     def __init__(self):
         super(DetachL3NetworkFromVmAction, self).__init__()
@@ -3538,6 +3574,18 @@ class DetachPrimaryStorageFromClusterAction(inventory.APIDetachPrimaryStorageFro
     def run(self):
         if not self.sessionUuid:
             raise Exception('sessionUuid of action[DetachPrimaryStorageFromClusterAction] cannot be None')
+        evt = api.async_call(self, self.sessionUuid)
+        self.out = evt
+        return self.out
+
+class DetachRemoteCIDRFromIPsecConnectionAction(inventory.APIDetachRemoteCIDRFromIPsecConnectionMsg):
+    def __init__(self):
+        super(DetachRemoteCIDRFromIPsecConnectionAction, self).__init__()
+        self.sessionUuid = None
+        self.out = None
+    def run(self):
+        if not self.sessionUuid:
+            raise Exception('sessionUuid of action[DetachRemoteCIDRFromIPsecConnectionAction] cannot be None')
         evt = api.async_call(self, self.sessionUuid)
         self.out = evt
         return self.out
