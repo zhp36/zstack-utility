@@ -116,9 +116,9 @@ class VipQos(kvmagent.KvmAgent):
         #if nic suffix is "_ei", use for outbound, so match sport
         handleId = format(classId, '03x')
         if nic.find("_ei") == -1:
-            bash_r("{{ns_cmd}} tc filter add dev {{nic}} parent 1:0 prio 1 handle 800::{{handleId}} protocol ip u32 match ip sport {{port}} 0xffff flowid 1:{{classId}}")
-        else:
             bash_r("{{ns_cmd}} tc filter add dev {{nic}} parent 1:0 prio 1 handle 800::{{handleId}} protocol ip u32 match ip dport {{port}} 0xffff flowid 1:{{classId}}")
+        else:
+            bash_r("{{ns_cmd}} tc filter add dev {{nic}} parent 1:0 prio 1 handle 800::{{handleId}} protocol ip u32 match ip sport {{port}} 0xffff flowid 1:{{classId}}")
 
     @in_bash
     def _find_empty_classid(self, nic, ns_cmd):
@@ -179,7 +179,7 @@ class VipQos(kvmagent.KvmAgent):
     @in_bash
     def _find_classid_with_port(self, nic, ns_cmd, port):
         portstr = format(port, '04x')
-        if nic.find("_ei") != -1:
+        if nic.find("_ei") == -1:
             filter = "0000%s/0000ffff" % portstr
         else:
             filter = "%s0000/ffff0000" % portstr
