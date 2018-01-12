@@ -9189,6 +9189,35 @@ class APIUpdateZoneMsg(object):
         self.userTags = OptionalList()
 
 
+APIATTACHL3NETWORKTOIPSECCONNECTIONMSG_FULL_NAME = 'org.zstack.ipsec.APIAttachL3NetworkToIPsecConnectionMsg'
+class APIAttachL3NetworkToIPsecConnectionMsg(object):
+    FULL_NAME='org.zstack.ipsec.APIAttachL3NetworkToIPsecConnectionMsg'
+    def __init__(self):
+        #mandatory field
+        self.uuid = NotNoneField()
+        #mandatory field
+        self.l3NetworkUuids = NotNoneList()
+        self.resourceUuid = None
+        self.session = None
+        self.timeout = None
+        self.systemTags = OptionalList()
+        self.userTags = OptionalList()
+
+
+APIATTACHREMOTECIDRTOIPSECCONNECTIONMSG_FULL_NAME = 'org.zstack.ipsec.APIAttachRemoteCIDRToIPsecConnectionMsg'
+class APIAttachRemoteCIDRToIPsecConnectionMsg(object):
+    FULL_NAME='org.zstack.ipsec.APIAttachRemoteCIDRToIPsecConnectionMsg'
+    def __init__(self):
+        #mandatory field
+        self.uuid = NotNoneField()
+        self.peerCidrs = OptionalList()
+        self.resourceUuid = None
+        self.session = None
+        self.timeout = None
+        self.systemTags = OptionalList()
+        self.userTags = OptionalList()
+
+
 APICHANGEIPSECCONNECTIONSTATEMSG_FULL_NAME = 'org.zstack.ipsec.APIChangeIPSecConnectionStateMsg'
 class APIChangeIPSecConnectionStateMsg(object):
     FULL_NAME='org.zstack.ipsec.APIChangeIPSecConnectionStateMsg'
@@ -9211,8 +9240,7 @@ class APICreateIPsecConnectionMsg(object):
         #mandatory field
         self.name = NotNoneField()
         self.description = None
-        #mandatory field
-        self.l3NetworkUuid = NotNoneField()
+        self.l3NetworkUuid = None
         #mandatory field
         self.peerAddress = NotNoneField()
         #valid values: [psk, certs]
@@ -9221,8 +9249,7 @@ class APICreateIPsecConnectionMsg(object):
         self.authKey = NotNoneField()
         #mandatory field
         self.vipUuid = NotNoneField()
-        #mandatory field
-        self.peerCidrs = NotNoneList()
+        self.peerCidrs = OptionalList()
         #valid values: [md5, sha1, sha256, sha384, sha512]
         self.ikeAuthAlgorithm = None
         #valid values: [3des, aes-128, aes-192, aes-256]
@@ -9252,6 +9279,34 @@ class APIDeleteIPsecConnectionMsg(object):
         #mandatory field
         self.uuid = NotNoneField()
         self.deleteMode = None
+        self.session = None
+        self.timeout = None
+        self.systemTags = OptionalList()
+        self.userTags = OptionalList()
+
+
+APIDETACHL3NETWORKFROMIPSECCONNECTIONMSG_FULL_NAME = 'org.zstack.ipsec.APIDetachL3NetworkFromIPsecConnectionMsg'
+class APIDetachL3NetworkFromIPsecConnectionMsg(object):
+    FULL_NAME='org.zstack.ipsec.APIDetachL3NetworkFromIPsecConnectionMsg'
+    def __init__(self):
+        #mandatory field
+        self.uuid = NotNoneField()
+        #mandatory field
+        self.l3NetworkUuids = NotNoneList()
+        self.session = None
+        self.timeout = None
+        self.systemTags = OptionalList()
+        self.userTags = OptionalList()
+
+
+APIDETACHREMOTECIDRFROMIPSECCONNECTIONMSG_FULL_NAME = 'org.zstack.ipsec.APIDetachRemoteCIDRFromIPsecConnectionMsg'
+class APIDetachRemoteCIDRFromIPsecConnectionMsg(object):
+    FULL_NAME='org.zstack.ipsec.APIDetachRemoteCIDRFromIPsecConnectionMsg'
+    def __init__(self):
+        #mandatory field
+        self.uuid = NotNoneField()
+        self.peerCidrs = OptionalList()
+        self.resourceUuid = None
         self.session = None
         self.timeout = None
         self.systemTags = OptionalList()
@@ -13942,6 +13997,7 @@ api_names = [
     'APIAttachHybridEipToEcsMsg',
     'APIAttachIsoToVmInstanceMsg',
     'APIAttachL2NetworkToClusterMsg',
+    'APIAttachL3NetworkToIPsecConnectionMsg',
     'APIAttachL3NetworkToVmMsg',
     'APIAttachMonitorTriggerActionToTriggerMsg',
     'APIAttachNetworkServiceProviderToL2NetworkMsg',
@@ -13953,6 +14009,7 @@ api_names = [
     'APIAttachPolicyToUserMsg',
     'APIAttachPortForwardingRuleMsg',
     'APIAttachPrimaryStorageToClusterMsg',
+    'APIAttachRemoteCIDRToIPsecConnectionMsg',
     'APIAttachSecurityGroupToL3NetworkMsg',
     'APIAttachUsbDeviceToVmMsg',
     'APIAttachVRouterRouteTableToVRouterMsg',
@@ -14182,6 +14239,7 @@ api_names = [
     'APIDetachHybridEipFromEcsMsg',
     'APIDetachIsoFromVmInstanceMsg',
     'APIDetachL2NetworkFromClusterMsg',
+    'APIDetachL3NetworkFromIPsecConnectionMsg',
     'APIDetachL3NetworkFromVmMsg',
     'APIDetachMonitorTriggerActionFromTriggerMsg',
     'APIDetachNetworkServiceFromL3NetworkMsg',
@@ -14193,6 +14251,7 @@ api_names = [
     'APIDetachPolicyFromUserMsg',
     'APIDetachPortForwardingRuleMsg',
     'APIDetachPrimaryStorageFromClusterMsg',
+    'APIDetachRemoteCIDRFromIPsecConnectionMsg',
     'APIDetachSecurityGroupFromL3NetworkMsg',
     'APIDetachUsbDeviceFromVmMsg',
     'APIDetachVRouterRouteTableFromVRouterMsg',
@@ -21694,12 +21753,19 @@ class QueryObjectHybridEipAddressInventory(object):
      }
 
 class QueryObjectIPsecConnectionInventory(object):
-     PRIMITIVE_FIELDS = ['authKey','transformProtocol','vipUuid','description','l3NetworkUuid','uuid','policyMode','peerAddress','authMode','policyAuthAlgorithm','policyEncryptionAlgorithm','ikeDhGroup','name','lastOpDate','state','ikeAuthAlgorithm','pfs','ikeEncryptionAlgorithm','status','createDate','__userTag__','__systemTag__']
-     EXPANDED_FIELDS = ['peerCidrs','l3Network','vip']
+     PRIMITIVE_FIELDS = ['authKey','transformProtocol','vipUuid','description','uuid','policyMode','peerAddress','authMode','policyAuthAlgorithm','policyEncryptionAlgorithm','ikeDhGroup','name','lastOpDate','state','ikeAuthAlgorithm','pfs','ikeEncryptionAlgorithm','status','createDate','__userTag__','__systemTag__']
+     EXPANDED_FIELDS = ['l3NetworkRefs','peerCidrs','l3Network','vip']
      QUERY_OBJECT_MAP = {
-        'l3Network' : 'QueryObjectL3NetworkInventory',
+        'l3NetworkRefs' : 'QueryObjectIPsecL3NetworkRefInventory',
+        'l3Network' : 'QueryObjectIPsecL3NetworkRefInventory',
         'peerCidrs' : 'QueryObjectIPsecPeerCidrInventory',
         'vip' : 'QueryObjectVipInventory',
+     }
+
+class QueryObjectIPsecL3NetworkRefInventory(object):
+     PRIMITIVE_FIELDS = ['lastOpDate','l3NetworkUuid','uuid','connectionUuid','createDate','__userTag__','__systemTag__']
+     EXPANDED_FIELDS = []
+     QUERY_OBJECT_MAP = {
      }
 
 class QueryObjectIPsecPeerCidrInventory(object):
